@@ -1,5 +1,4 @@
 {
-    "connectivity_check":true,
     "desktop":{
         "enabled":true,
         "trigger":"warning"

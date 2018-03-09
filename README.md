@@ -18,8 +18,7 @@ Python 3 must be inatalled.
 
 Install python ackages in Ubuntu or Debian:
 
-    apt install python3-urllib3, python3-notify2
-
+    apt install python3-urllib3 python3-notify2 python3-yaml
 
 ### Usage ###
 

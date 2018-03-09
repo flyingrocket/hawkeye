@@ -130,28 +130,6 @@ print()
 # FUNCTIONS
 ####################################
 
-# check if network
-def internet(host="8.8.8.8", port=53, timeout=3):
-
-   # Host: 8.8.8.8 (google-public-dns-a.google.com), OpenPort: 53/tcp, Service: domain (DNS/TCP)
-
-   try:
-     socket.setdefaulttimeout(timeout)
-     socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
-     return True
-   except Exception as ex:
-     print(ex.message)
-     return False
-
-if cli_config['config']['connectivity_check']:
-    print('Check connectivity...')
-    if internet():
-        print('OK')
-        print()
-    else:
-        print('No connection.. ')
-        exit(1)
-
 # notifications for the desktop
 def desktop_notify(messages):
 
@@ -189,8 +167,22 @@ number_of_services = len(cli_config['services'].items())
 bar = Bar('Scanning...', max=number_of_services)
 
 messages=[]
+connectivity_checked = False
 # request the urls
 for service, service_config in cli_config['services'].items():
+
+    # check connectivity
+    if not connectivity_checked:
+        connectivity_checked = True
+        domain = service.split('//')[-1].split('/')[0].split('?')[0]
+        try:
+            # print('Connectivity check. Try {}... '.format(domain))
+            resolved = socket.gethostbyname(domain)
+        except OSError as e:
+            print('Network connection error. Cannot resolve {}. Server says: "{}"...'.format(domain, e.args[1]))
+            exit(1)
+
+
     # initiate status
     service_status = False
 
