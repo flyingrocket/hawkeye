@@ -1,0 +1,21 @@
+{
+    "connectivity_check":true,
+    "desktop":{
+        "enabled":false,
+        "trigger":"warning"
+     },
+    "email":{
+        "enabled":true,
+        "server":"localhost"
+    },
+    "log_dir":"/home/kermit/hawkeye2.d/logs",
+    "notify":[
+    "kermit@muppets.domain",
+    "gonzo@muppets.domain",
+    "fozzie@muppets.domain"
+    ],
+    "request": {
+        "timeout":15,
+        "retries":3
+    }
+}

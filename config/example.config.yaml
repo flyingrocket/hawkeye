@@ -1,0 +1,31 @@
+---
+# try to connect to google 8.8.8.8.
+# script will not continue if no connection
+connectivity_check: true
+# enable desktop notifications
+# e.g. use with cron
+desktop:
+  # install package: python3-notify2
+  enabled: false
+  # use "warning" or "change"
+  # warning: notify every time if warning
+  # change: notify if status is changed
+  trigger: warning
+email:
+  # enable sending of emails
+  enabled: true
+  # smtp server
+  server: localhost
+# directory where logs are kept
+log_dir: "/home/kermit/hawkeye2.d/logs"
+# list of persons to be notified
+# a change in any service will be reported
+notify:
+- kermit@muppets.domain
+- gonzo@muppets.domain
+- fozzie@muppets.domain
+# some values while doing the request
+# install package: python3-urllib3
+request:
+  timeout: 15
+  retries: 3

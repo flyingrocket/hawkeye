@@ -1,0 +1,13 @@
+---
+connectivity_check: true
+desktop:
+  enabled: true
+  trigger: warning
+email:
+  enabled: false
+  server: ''
+log_dir: "/tmp"
+notify: []
+request:
+  timeout: 15
+  retries: 3

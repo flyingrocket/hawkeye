@@ -1,0 +1,17 @@
+---
+"<http://muppets1.domain>": {}
+"<http://muppets2.domain>": {}
+"<http://muppets3.domain>": {}
+"<http://muppets4.domain>":
+  notify:
+  - chef@muppets.domain
+  status: 200
+  tag: "<tag>"
+  hash: "<md5_hash>"
+"<http://muppets5.domain>":
+  notify:
+  - statler@muppets.domain
+  - waldorf@muppets.domain
+  status: 403
+  tag: "<tag>"
+  hash: "<md5_hash>"
