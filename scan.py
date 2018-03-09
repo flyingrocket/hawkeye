@@ -179,7 +179,7 @@ for service, service_config in cli_config['services'].items():
             # print('Connectivity check. Try {}... '.format(domain))
             resolved = socket.gethostbyname(domain)
         except OSError as e:
-            print('Network connection error. Cannot resolve {}. Server says: "{}"...'.format(domain, e.args[1]))
+            print('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
             exit(1)
 
 
