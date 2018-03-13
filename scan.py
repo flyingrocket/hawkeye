@@ -182,7 +182,6 @@ for service, service_config in cli_config['services'].items():
             print('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
             exit(1)
 
-
     # initiate status
     service_status = False
 
