@@ -310,10 +310,14 @@ for file in tmp_files:
 
 service_tmp_files.sort(reverse=True)
 
-# no need to do anything if script is ran for the first time
 changes = {}
+# script is ran for the first time (or after reboot)
 if len(service_tmp_files) == 1:
     print('No old runs detected...')
+
+    # if no old logs are detected but global status is not OK, notify!
+    if len(services_in_error) != 0:
+        changes = services_in_error
 else:
     # store the statuses
     service_status_log = {}
