@@ -392,7 +392,7 @@ if config['email']['enabled']:
 
 # log
 mail_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.tmp'
-mail_tmp_file = open(mail_tmp_file_path, 'w')
+mail_tmp_file = open(mail_tmp_file_path, 'a')
 
 # send messages
 if notify_email:
