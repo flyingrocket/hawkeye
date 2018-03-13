@@ -439,11 +439,13 @@ if notify_email:
             if service_to_notify in services_in_error.keys():
                 warnings += 1
                 indent = '---> '
+                newline = "\n"
             else:
                 indent = ''
+                newline = ''
 
             # append all services to body
-            body.append(indent + service_to_notify + " " + service_status_log['new'][service_to_notify])
+            body.append(newline + indent + service_to_notify + " " + service_status_log['new'][service_to_notify] + newline)
 
         if warnings:
             status = str(warnings) + ' SERVICE(S) FAILED!'
