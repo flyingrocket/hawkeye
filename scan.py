@@ -478,7 +478,7 @@ if notify_email:
         try:
             print('Sending mails to server {}...'.format(cli_config['config']['email']['server']))
             smtpObj = smtplib.SMTP(cli_config['config']['email']['server'], 25)
-            smtpObj.set_debuglevel(True)
+            # smtpObj.set_debuglevel(True)
             smtpObj.sendmail(sender, recipient, "\n".join(message))
             print("Successfully sent email to " + recipient + "...")
         except:
