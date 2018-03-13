@@ -100,6 +100,14 @@ for type, file_path in cli_params.items():
             print('{} file not supported!'.format(type))
             exit(1)
 
+    # sort the files
+    cli_config_tmp = {}
+    for k,v in sorted(cli_config[type].items()):
+        print(k)
+        print("\n")
+        cli_config_tmp[k] = cli_config[type][k]
+    cli_config[type] = cli_config_tmp
+
 # delete a random service
 if monkey:
     services = list(cli_config['services'].keys())
@@ -431,12 +439,12 @@ if notify_email:
         for service_to_notify in services_to_notify_config[recipient]:
             if service_to_notify in services_in_error.keys():
                 warnings += 1
-                embellish = '*'
+                indent = '---> '
             else:
-                embellish = ''
+                indent = ''
 
             # append all services to body
-            body.append(embellish + service_to_notify + " " + service_status_log['new'][service_to_notify] + embellish)
+            body.append(indent + service_to_notify + " " + service_status_log['new'][service_to_notify])
 
         if warnings:
             status = str(warnings) + ' SERVICE(S) FAILED!'
