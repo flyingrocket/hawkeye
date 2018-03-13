@@ -390,6 +390,11 @@ if config['email']['enabled']:
     if len(changes) != 0:
         notify_email = True
 
+# log
+mail_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.tmp'
+mail_tmp_file = open(mail_tmp_file_path, 'w')
+
+# send messages
 if notify_email:
     print()
     recipients_to_notify = []
@@ -482,6 +487,14 @@ if notify_email:
             print()
             print("Error! Unable to send email...")
             exit(1)
+
+        # log
+        for line in message:
+            services_log_file.write(line)
+            services_log_file.write("\n\n --- \n\n")
+
+    # close log file
+    mail_tmp_file.close()
 
     print()
 
