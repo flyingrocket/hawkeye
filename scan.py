@@ -464,6 +464,8 @@ if notify_email:
         message.append('From: <' + sender + '>')
         message.append('To: <' + recipient + '>')
         message.append('Subject: ' + mails[recipient]['subject'])
+        # newline between subject and message?
+        message.append('')
         for line in mails[recipient]['body']:
             message.append(line)
 
