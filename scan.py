@@ -103,8 +103,6 @@ for type, file_path in cli_params.items():
     # sort the files
     cli_config_tmp = {}
     for k,v in sorted(cli_config[type].items()):
-        print(k)
-        print("\n")
         cli_config_tmp[k] = cli_config[type][k]
     cli_config[type] = cli_config_tmp
 
