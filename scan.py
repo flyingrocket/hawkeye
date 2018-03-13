@@ -133,6 +133,8 @@ print()
 # notifications for the desktop
 def desktop_notify(messages):
 
+    print()
+    print('Notify desktop...')
     # for message in messages:
         # hyperlink_format = '<a href="{link}">{text}</a>'
         # print(hyperlink_format.format(link='http://foo/bar', text=message))
@@ -142,12 +144,12 @@ def desktop_notify(messages):
 
     try:
         notify2.init(app_name + app_version)
-        n = notify2.Notification(app_name + ' ' + app_version + ' warning', "\n".join(messages))
+        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' warning', "\n".join(messages))
         n.show()
-    except:
-        print('Could not notify desktop. Package python3-notify2 installed?')
+    except Exception as e:
+        # the first one is usually the message.
+        print('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
         exit(1)
-
 
 ####################################
 # ITERATE SERVICES
@@ -246,11 +248,10 @@ print()
 ####################################
 # SERVICES TMP AND LOG FILES
 ####################################
-# service_status_file_path = '/tmp/hawkeye2_' + datetime_stamp + '_' + script_hash + '.service.log'
-services_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.log.tmp'
+services_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.services.tmp'
 services_tmp_file = open(services_tmp_file_path, 'w')
 
-services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.log')
+services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
 # status_log_file_path = os.path.join(log_dir, script_name + '.status.log')
 print('Write log file... {}'.format(services_log_file_path))
 services_log_file = open(services_log_file_path, 'a')
@@ -289,10 +290,10 @@ if global_status == "WARNING":
 
     for message in messages:
         print(message)
-
-        if config['desktop']['enabled']:
-            if config['desktop']['trigger'] == 'warning':
-                desktop_notify(messages)
+    #
+    # if config['desktop']['enabled']:
+    #     if config['desktop']['trigger'] == 'warning':
+    #         desktop_notify(messages)
 
 print()
 
@@ -305,7 +306,7 @@ tmp_files = os.listdir('/tmp')
 # add all the service tmp files to a list
 service_tmp_files = []
 for file in tmp_files:
-    if re.search(app_nickname + '.' + session_hash + '.+\.tmp$', file):
+    if re.search(app_nickname + '.' + session_hash + '.+\.services\.tmp$', file):
         service_tmp_files.append(file)
 
 service_tmp_files.sort(reverse=True)
@@ -314,10 +315,6 @@ changes = {}
 # script is ran for the first time (or after reboot)
 if len(service_tmp_files) == 1:
     print('No old runs detected...')
-
-    # if no old logs are detected but global status is not OK, notify!
-    if len(services_in_error) != 0:
-        changes = services_in_error
 else:
     # store the statuses
     service_status_log = {}
@@ -375,12 +372,7 @@ if config['desktop']['enabled']:
             notify_desktop = True
 
 if notify_desktop:
-    # sudo apt install python3-notify2
-    try:
-        desktop_notify()
-    except:
-        print('Could not notify desktop. Package python3-notify2 installed?')
-
+    desktop_notify(messages)
 
 ####################################
 # COMPILE LIST OF EMAIL RECIPIENTS
@@ -391,8 +383,8 @@ if config['email']['enabled']:
         notify_email = True
 
 # log
-mail_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.tmp'
-mail_tmp_file = open(mail_tmp_file_path, 'a')
+mail_log_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.tmp'
+mail_log_file = open(mail_log_file_path, 'a')
 
 # send messages
 if notify_email:
@@ -486,15 +478,17 @@ if notify_email:
         except:
             print()
             print("Error! Unable to send email...")
+            mail_log_file.write('ERROR sending mail to {}'.format(recipient))
             exit(1)
 
         # log
         for line in message:
-            services_log_file.write(line)
-            services_log_file.write("\n\n --- \n\n")
+            mail_log_file.write(line)
+
+        mail_log_file.write("\n\n --- \n\n")
 
     # close log file
-    mail_tmp_file.close()
+    mail_log_file.close()
 
     print()
 
