@@ -329,10 +329,11 @@ for file in tmp_files:
 service_tmp_files.sort(reverse=True)
 
 # just keep the 2 last files for comparison
-i=2
-while i < len(service_tmp_files):
-    shutil.move(os.path.join(tmp_dir, service_tmp_files[i]), '/tmp')
-    i += 1
+if not re.match('^/tmp/?$', tmp_dir):
+    i=2
+    while i < len(service_tmp_files):
+        shutil.move(os.path.join(tmp_dir, service_tmp_files[i]), '/tmp')
+        i += 1
 
 changes = {}
 # script is ran for the first time (or after reboot)
