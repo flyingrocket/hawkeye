@@ -112,18 +112,26 @@ if monkey:
     services = list(cli_config['services'].keys())
     random_service =  random.choice(services)
     print()
-    print('!!!! Monkey deleted service {} !!!!'.format(random_service))
-    print()
+    print('Monkey deleted service {} :)'.format(random_service))
     cli_config['services'].pop(random_service, None)
 
 ####################################
 # VALIDATE APP CONFIG
 ####################################
-log_dir = os.path.expanduser(cli_config['config']["log_dir"])
-# use expanduser to deal with a tilda
-if os.path.isdir(log_dir) != True:
-    print("Abort! Logdir not found!")
-    exit(1)
+for type in ['log', 'tmp']:
+    try:
+        dir = os.path.expanduser(cli_config['config']["dirs"][type])
+    except:
+        print('Abort! Directive dir:{} not set??'.format(type))
+        exit(1)
+    # use expanduser to deal with a tilda
+    if os.path.isdir(dir) != True:
+        print("Abort! {} dir {} not found!".format(type, dir))
+        exit(1)
+
+# set the variables
+log_dir = os.path.normpath(os.path.expanduser(cli_config['config']["dirs"]["log"]))
+tmp_dir = os.path.normpath(os.path.expanduser(cli_config['config']["dirs"]["tmp"]))
 
 if not cli_config['config']['desktop']['trigger'] in ['warning', 'change']:
     print("Abort! Desktop trigger must be value warning|change")
@@ -255,7 +263,7 @@ print()
 ####################################
 # SERVICES TMP AND LOG FILES
 ####################################
-services_tmp_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.services.tmp'
+services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.services.tmp')
 services_tmp_file = open(services_tmp_file_path, 'w')
 
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
@@ -307,8 +315,8 @@ print()
 ####################################
 # STORE STATUSES
 ####################################
-# get a list of all files in /tmp
-tmp_files = os.listdir('/tmp')
+# get a list of all files in tmp dir
+tmp_files = os.listdir(tmp_dir)
 
 # add all the service tmp files to a list
 service_tmp_files = []
@@ -317,6 +325,12 @@ for file in tmp_files:
         service_tmp_files.append(file)
 
 service_tmp_files.sort(reverse=True)
+
+# just keep the 2 last files for comparison
+i=2
+while i < len(service_tmp_files):
+    os.rename(os.path.join(tmp_dir, service_tmp_files[i]), os.path.join('/tmp', service_tmp_files[i]))
+    i += 1
 
 changes = {}
 # script is ran for the first time (or after reboot)
@@ -328,7 +342,7 @@ else:
     i = 0
     for run in ['new', 'old']:
 
-        service_log_file_path = '/tmp/' + service_tmp_files[i]
+        service_log_file_path = os.path.join(tmp_dir, service_tmp_files[i])
         # open the files
         service_log_file = open(service_log_file_path, 'r')
 
@@ -389,8 +403,8 @@ if config['email']['enabled']:
     if len(changes) != 0:
         notify_email = True
 
-# log
-mail_log_file_path = '/tmp/' + app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.tmp'
+# log mails - purely for debugging - /tmp used
+mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.log')
 mail_log_file = open(mail_log_file_path, 'a')
 
 # send messages
@@ -438,8 +452,8 @@ if notify_email:
         for service_to_notify in services_to_notify_config[recipient]:
             if service_to_notify in services_in_error.keys():
                 warnings += 1
-                indent = '---> '
-                newline = "\n"
+                indent = "\t\t"
+                newline = '' # '"\n"
             else:
                 indent = ''
                 newline = ''
@@ -474,6 +488,9 @@ if notify_email:
         message.append('')
         for line in mails[recipient]['body']:
             message.append(line)
+
+        message.append('')
+        message.append('Run ID: {}'.format(session_id))
 
         if args.verbose:
             print("\n".join(message))

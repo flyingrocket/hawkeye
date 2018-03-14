@@ -5,7 +5,9 @@ desktop:
 email:
   enabled: false
   server: ''
-log_dir: "/tmp"
+dirs:
+  log: "/tmp"
+  tmp: "/tmp"
 notify: []
 request:
   timeout: 15

@@ -3,11 +3,14 @@
         "enabled":true,
         "trigger":"warning"
      },
-    "email":{
+    "dirs":{
+        "log":"/tmp",
+        "tmp":"/tmp"
+     },
+        "email":{
         "enabled":false,
         "server":""
      },
-    "log_dir":"/tmp",
     "notify":[
 
     ],

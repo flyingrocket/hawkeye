@@ -3,11 +3,14 @@
         "enabled":false,
         "trigger":"warning"
      },
+    "dirs":{
+        "log":"/home/kermit/hawkeye2.d/logs",
+        "tmp":"/home/kermit/hawkeye2.d/tmp"
+     },
     "email":{
         "enabled":true,
         "server":"localhost"
     },
-    "log_dir":"/home/kermit/hawkeye2.d/logs",
     "notify":[
     "kermit@muppets.domain",
     "gonzo@muppets.domain",

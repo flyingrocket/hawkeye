@@ -11,13 +11,16 @@ desktop:
   # warning: notify every time if warning
   # change: notify if status is changed
   trigger: warning
+dirs:
+  # directory where log files are kept
+  log: "/home/kermit/hawkeye2.d/logs"
+  # directory where tmp files are kept
+  tmp: "/home/kermit/hawkeye2.d/tmp"
 email:
   # enable sending of emails
   enabled: true
   # smtp server
   server: localhost
-# directory where logs are kept
-log_dir: "/home/kermit/hawkeye2.d/logs"
 # list of persons to be notified
 # a change in any service will be reported
 notify:
