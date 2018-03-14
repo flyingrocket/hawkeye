@@ -25,6 +25,8 @@ import smtplib
 import socket
 # system calls
 import sys
+# move files to other dirs
+import shutil
 # http requests:
 # $ apt install python3-urllib3
 import urllib3
@@ -329,7 +331,7 @@ service_tmp_files.sort(reverse=True)
 # just keep the 2 last files for comparison
 i=2
 while i < len(service_tmp_files):
-    os.rename(os.path.join(tmp_dir, service_tmp_files[i]), os.path.join('/tmp', service_tmp_files[i]))
+    shutil.move(os.path.join(tmp_dir, service_tmp_files[i]), '/tmp')
     i += 1
 
 changes = {}
