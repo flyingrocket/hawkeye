@@ -11,6 +11,8 @@ import hashlib
 import datetime
 # read the json file
 import json
+# status codes
+import requests
 # read dirs and files
 import os.path
 # create a unique identifier per session
@@ -114,7 +116,7 @@ if monkey:
     services = list(cli_config['services'].keys())
     random_service =  random.choice(services)
     print()
-    print('Monkey deleted service {} :)'.format(random_service))
+    print('--> Monkey deleted service {} :)'.format(random_service))
     cli_config['services'].pop(random_service, None)
 
 ####################################
@@ -217,19 +219,24 @@ for service, service_config in cli_config['services'].items():
     else:
         status_expected = 200
 
+    # get a list of all http response codes
+    response_codes = requests.status_codes._codes
+
     if monkey:
-        status_expected = random.randint(0,100)
+        # randomly change a service
+        if random.randint(0, 1) == 1:
+            status_expected = random.choice(list(response_codes.keys()))
 
     # check the response
     try:
         r = http.request('GET', service, timeout=float(cli_config['config']['request']['timeout']), retries=int(cli_config['config']['request']['retries']))
-    except:
-        services_in_error[service] = 'FAILED CONNECTION'
+    except Exception as e:
+        services_in_error[service] = 'FAILED CONNECTION' # + str(e)
 
     if service not in services_in_error.keys():
         # add to error list if response does not match
         if r.status != status_expected:
-            services_in_error[service] = 'FAILED RESPONSE ' + str(status_expected) + ' (' + str(r.status) + ')'
+            services_in_error[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(status_expected), response_codes[int(status_expected)][0], str(r.status), response_codes[int(r.status)][0])
         # setup expected hash
         elif 'hash' in service_config:
             # $ wget https://some.url, $ cat index.html | md5sum
@@ -239,7 +246,7 @@ for service, service_config in cli_config['services'].items():
             md5_hash = hashlib.md5(text_utf8)
             hash_calculated = md5_hash.hexdigest()
             if hash_calculated != hash_expected:
-                services_in_error[service] = 'FAILED MD5SUM ' + service_config['hash'] + ' (' + str(hash_calculated) + ')'
+                services_in_error[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
     # add the service to recipients needed to be notified
     for config in [service_config, cli_config['config']]:
@@ -433,7 +440,7 @@ if notify_email:
 
     # no recipients
     if len(recipients_to_notify) == 0:
-        print('No recipients found...')
+        print('No email recipients found...')
         print()
         exit()
 
@@ -455,7 +462,7 @@ if notify_email:
         for service_to_notify in services_to_notify_config[recipient]:
             if service_to_notify in services_in_error.keys():
                 warnings += 1
-                indent = "\t\t"
+                indent = "*** fail *** "
                 newline = '' # '"\n"
             else:
                 indent = ''
@@ -468,6 +475,11 @@ if notify_email:
             status = str(warnings) + ' SERVICE(S) FAILED!'
         else:
             status = 'SERVICES OK'
+
+        body.sort()
+        for b in body:
+            print(b)
+        exit()
 
         subject = app_nickname.upper() + ' @' + session_hostname + ' ' + status
 
