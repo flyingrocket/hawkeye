@@ -46,10 +46,10 @@ app_version = "2.0"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 
-session_dir = os.path.dirname(__file__)
-session_id = str(uuid.uuid4())
-session_hash = hashlib.md5('.'.join(sys.argv[1:]).encode('utf-8')).hexdigest()
-session_hostname = socket.gethostname()
+session = {}
+session['dir'] = os.path.dirname(__file__)
+session['id'] = str(uuid.uuid4())
+session['hash'] = hashlib.md5('.'.join(sys.argv[1:]).encode('utf-8')).hexdigest()
 ####################################
 # DATE AND TIME
 ####################################
@@ -62,7 +62,7 @@ datetime_stamp = str(datetime.datetime.now().strftime(format))
 ####################################
 parser = argparse.ArgumentParser(description=app_name + app_version)
 parser.add_argument('-s', '--servicesfile', help='Services json or yaml file', required=True)
-parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session_dir, 'config/default.config.yaml'))
+parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
 # flag without arguments
 parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
 parser.add_argument('-m', '--monkey', help='mokey mode', required=False, default=False, action='store_true')
@@ -89,7 +89,6 @@ cli_params = {}
 cli_params['services'] = args.servicesfile
 cli_params['config'] = args.configfile
 
-config_params = {}
 for type, file_path in cli_params.items():
     if not os.path.isfile(file_path):
         print('{} file not found!'.format(type))
@@ -97,34 +96,34 @@ for type, file_path in cli_params.items():
 
     with open(file_path) as file:
         if re.search('.+\.json$', file_path):
-            config_params[type] = json.load(file)
+            session[type] = json.load(file)
         elif re.search('.+\.ya?ml$', file_path):
-            config_params[type] = yaml.load(file)
+            session[type] = yaml.load(file)
         else:
             print('{} file not supported!'.format(type))
             exit(1)
 
     # sort the files
     cli_config_tmp = {}
-    keys = sorted(list(config_params[type].keys()))
+    keys = sorted(list(session[type].keys()))
     for k in keys:
-        cli_config_tmp[k] = config_params[type][k]
-    config_params[type] = cli_config_tmp
+        cli_config_tmp[k] = session[type][k]
+    session[type] = cli_config_tmp
 
 # delete a random service
 if monkey:
-    services = list(config_params['services'].keys())
+    services = list(session['services'].keys())
     random_service =  random.choice(services)
     print()
     print('--> Monkey deleted service {} :)'.format(random_service))
-    config_params['services'].pop(random_service, None)
+    session['services'].pop(random_service, None)
 
 ####################################
 # VALIDATE APP CONFIG
 ####################################
 for type in ['log', 'tmp']:
     try:
-        dir = os.path.expanduser(config_params['config']["dirs"][type])
+        dir = os.path.expanduser(session['config']["dirs"][type])
     except:
         print('Abort! Directive dir:{} not set??'.format(type))
         exit(1)
@@ -134,15 +133,15 @@ for type in ['log', 'tmp']:
         exit(1)
 
 # set the variables
-log_dir = os.path.normpath(os.path.expanduser(config_params['config']["dirs"]["log"]))
-tmp_dir = os.path.normpath(os.path.expanduser(config_params['config']["dirs"]["tmp"]))
+log_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["log"]))
+tmp_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["tmp"]))
 
-if not config_params['config']['desktop']['trigger'] in ['warning', 'change']:
+if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     print("Abort! Desktop trigger must be value warning|change")
     exit(1)
 
 print()
-print('{} {} ID {}'.format(app_name, app_version, session_id))
+print('{} {} ID {}'.format(app_name, app_version, session['id']))
 print()
 
 ####################################
@@ -182,7 +181,7 @@ http = urllib3.PoolManager()
 services_in_error = {}
 services_to_notify_config = {}
 
-number_of_services = len(config_params['services'].items())
+number_of_services = len(session['services'].items())
 
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
@@ -190,7 +189,7 @@ bar = Bar('Scanning...', max=number_of_services)
 messages=[]
 connectivity_checked = False
 # request the urls
-for service, service_config in config_params['services'].items():
+for service, service_config in session['services'].items():
 
     # check connectivity
     if not connectivity_checked:
@@ -229,7 +228,7 @@ for service, service_config in config_params['services'].items():
 
     # check the response
     try:
-        r = http.request('GET', service, timeout=float(config_params['config']['request']['timeout']), retries=int(config_params['config']['request']['retries']))
+        r = http.request('GET', service, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
     except Exception as e:
         services_in_error[service] = 'FAILED CONNECTION' # + str(e)
 
@@ -249,8 +248,8 @@ for service, service_config in config_params['services'].items():
                 services_in_error[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
     # add the service to recipients needed to be notified
-    if 'services' in config_params['config']['email'] and config_params['config']['email']['services']:
-        for config in [service_config, config_params['config']]:
+    if 'services' in session['config']['email'] and session['config']['email']['services']:
+        for config in [service_config, session['config']]:
             # setup notices
             if 'notify' in config:
                 for recipient in config['notify']:
@@ -273,7 +272,7 @@ print()
 ####################################
 # SERVICES TMP AND LOG FILES
 ####################################
-services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.services.tmp')
+services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
 services_tmp_file = open(services_tmp_file_path, 'w')
 
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
@@ -282,13 +281,13 @@ print('Write log file... {}'.format(services_log_file_path))
 services_log_file = open(services_log_file_path, 'a')
 
 # iterate through all services
-for service, service_config in config_params['services'].items():
+for service, service_config in session['services'].items():
     if service in services_in_error:
         new_status = services_in_error[service]
     else:
         new_status = 'OK'
 
-    line = datetime_stamp + ';' + session_id + ';' + service + ';' + new_status + "\n"
+    line = datetime_stamp + ';' + session['id'] + ';' + service + ';' + new_status + "\n"
     services_tmp_file.write(line)
     services_log_file.write(line)
 
@@ -331,7 +330,7 @@ tmp_files = os.listdir(tmp_dir)
 # add all the service tmp files to a list
 service_tmp_files = []
 for file in tmp_files:
-    if re.search(app_nickname + '.' + session_hash + '.+\.services\.tmp$', file):
+    if re.search(app_nickname + '.' + session['hash'] + '.+\.services\.tmp$', file):
         service_tmp_files.append(file)
 
 service_tmp_files.sort(reverse=True)
@@ -394,8 +393,8 @@ if len(changes) == 0:
 # DESKTOP ALERT
 ####################################
 notify_desktop = False
-if config['desktop']['enabled']:
-    if config['desktop']['trigger'] == 'change':
+if session['config']['desktop']['enabled']:
+    if session['config']['desktop']['trigger'] == 'change':
         if len(changes) != 0:
             notify_desktop = True
     # contiuous notifications
@@ -410,12 +409,12 @@ if notify_desktop:
 # COMPILE LIST OF EMAIL RECIPIENTS
 ####################################
 notify_email = False
-if config['email']['enabled']:
+if session['config']['email']['enabled']:
     if len(changes) != 0:
         notify_email = True
 
 # log mails - purely for debugging - /tmp used
-mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session_hash + '.' + datetime_stamp + '.' + session_id + '.mail.log')
+mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
 mail_log_file = open(mail_log_file_path, 'a')
 
 # send messages
@@ -425,7 +424,7 @@ if notify_email:
     # messages
     for service, status in changes.items():
         # default notifications
-        for email_address in config_params['config']['notify']:
+        for email_address in session['config']['notify']:
             if email_address not in recipients_to_notify:
                 recipients_to_notify.append(email_address)
             # create a list if required
@@ -434,8 +433,8 @@ if notify_email:
             # messages[recipient].append(service + ' : ' + status)
 
         # extra notifications per service
-        if 'notify' in config_params['services'][service].keys():
-            for email_address in config_params['services'][service]['notify']:
+        if 'notify' in session['services'][service].keys():
+            for email_address in session['services'][service]['notify']:
                 if email_address not in recipients_to_notify:
                     recipients_to_notify.append(email_address)
 
@@ -449,7 +448,7 @@ if notify_email:
     # PREPARE MAILS
     ####################################
     # no mail config - allow tmp files to be created!!
-    if not config_params['config']['email']['enabled'] == True:
+    if not session['config']['email']['enabled'] == True:
         print('Email not enabled...')
         print()
         exit()
@@ -482,7 +481,8 @@ if notify_email:
             print(b)
         exit()
 
-        subject = app_nickname.upper() + ' @' + session_hostname + ' ' + status
+        hostname = socket.gethostname()
+        subject = app_nickname.upper() + ' @' + hostname + ' ' + status
 
         mails[recipient]['subject'] = subject
         mails[recipient]['body'] = body
@@ -506,14 +506,14 @@ if notify_email:
             message.append(line)
 
         message.append('')
-        message.append('Run ID: {}'.format(session_id))
+        message.append('Run ID: {}'.format(session['id']))
 
         if args.verbose:
             print("\n".join(message))
 
         try:
-            print('Sending mails to server {}...'.format(config_params['config']['email']['server']))
-            smtpObj = smtplib.SMTP(config_params['config']['email']['server'], 25)
+            print('Sending mails to server {}...'.format(session['config']['email']['server']))
+            smtpObj = smtplib.SMTP(session['config']['email']['server'], 25)
             # smtpObj.set_debuglevel(True)
             smtpObj.sendmail(sender, recipient, "\n".join(message))
             print("Successfully sent email to " + recipient + "...")
