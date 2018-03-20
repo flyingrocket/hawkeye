@@ -19,6 +19,8 @@ dirs:
 email:
   # enable sending of emails
   enabled: true
+  # enable emails per service
+  services: true
   # smtp server
   server: localhost
 # list of persons to be notified

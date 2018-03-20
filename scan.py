@@ -62,7 +62,7 @@ datetime_stamp = str(datetime.datetime.now().strftime(format))
 ####################################
 parser = argparse.ArgumentParser(description=app_name + app_version)
 parser.add_argument('-s', '--servicesfile', help='Services json or yaml file', required=True)
-parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session_dir, 'config/default.config.json'))
+parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session_dir, 'config/default.config.yaml'))
 # flag without arguments
 parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
 parser.add_argument('-m', '--monkey', help='mokey mode', required=False, default=False, action='store_true')
@@ -89,7 +89,7 @@ cli_params = {}
 cli_params['services'] = args.servicesfile
 cli_params['config'] = args.configfile
 
-cli_config = {}
+config_params = {}
 for type, file_path in cli_params.items():
     if not os.path.isfile(file_path):
         print('{} file not found!'.format(type))
@@ -97,34 +97,34 @@ for type, file_path in cli_params.items():
 
     with open(file_path) as file:
         if re.search('.+\.json$', file_path):
-            cli_config[type] = json.load(file)
+            config_params[type] = json.load(file)
         elif re.search('.+\.ya?ml$', file_path):
-            cli_config[type] = yaml.load(file)
+            config_params[type] = yaml.load(file)
         else:
             print('{} file not supported!'.format(type))
             exit(1)
 
     # sort the files
     cli_config_tmp = {}
-    keys = sorted(list(cli_config[type].keys()))
+    keys = sorted(list(config_params[type].keys()))
     for k in keys:
-        cli_config_tmp[k] = cli_config[type][k]
-    cli_config[type] = cli_config_tmp
+        cli_config_tmp[k] = config_params[type][k]
+    config_params[type] = cli_config_tmp
 
 # delete a random service
 if monkey:
-    services = list(cli_config['services'].keys())
+    services = list(config_params['services'].keys())
     random_service =  random.choice(services)
     print()
     print('--> Monkey deleted service {} :)'.format(random_service))
-    cli_config['services'].pop(random_service, None)
+    config_params['services'].pop(random_service, None)
 
 ####################################
 # VALIDATE APP CONFIG
 ####################################
 for type in ['log', 'tmp']:
     try:
-        dir = os.path.expanduser(cli_config['config']["dirs"][type])
+        dir = os.path.expanduser(config_params['config']["dirs"][type])
     except:
         print('Abort! Directive dir:{} not set??'.format(type))
         exit(1)
@@ -134,10 +134,10 @@ for type in ['log', 'tmp']:
         exit(1)
 
 # set the variables
-log_dir = os.path.normpath(os.path.expanduser(cli_config['config']["dirs"]["log"]))
-tmp_dir = os.path.normpath(os.path.expanduser(cli_config['config']["dirs"]["tmp"]))
+log_dir = os.path.normpath(os.path.expanduser(config_params['config']["dirs"]["log"]))
+tmp_dir = os.path.normpath(os.path.expanduser(config_params['config']["dirs"]["tmp"]))
 
-if not cli_config['config']['desktop']['trigger'] in ['warning', 'change']:
+if not config_params['config']['desktop']['trigger'] in ['warning', 'change']:
     print("Abort! Desktop trigger must be value warning|change")
     exit(1)
 
@@ -182,7 +182,7 @@ http = urllib3.PoolManager()
 services_in_error = {}
 services_to_notify_config = {}
 
-number_of_services = len(cli_config['services'].items())
+number_of_services = len(config_params['services'].items())
 
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
@@ -190,7 +190,7 @@ bar = Bar('Scanning...', max=number_of_services)
 messages=[]
 connectivity_checked = False
 # request the urls
-for service, service_config in cli_config['services'].items():
+for service, service_config in config_params['services'].items():
 
     # check connectivity
     if not connectivity_checked:
@@ -229,7 +229,7 @@ for service, service_config in cli_config['services'].items():
 
     # check the response
     try:
-        r = http.request('GET', service, timeout=float(cli_config['config']['request']['timeout']), retries=int(cli_config['config']['request']['retries']))
+        r = http.request('GET', service, timeout=float(config_params['config']['request']['timeout']), retries=int(config_params['config']['request']['retries']))
     except Exception as e:
         services_in_error[service] = 'FAILED CONNECTION' # + str(e)
 
@@ -249,15 +249,16 @@ for service, service_config in cli_config['services'].items():
                 services_in_error[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
     # add the service to recipients needed to be notified
-    for config in [service_config, cli_config['config']]:
-        # setup notices
-        if 'notify' in config:
-            for recipient in config['notify']:
-                # check if email already exists
-                if not recipient in services_to_notify_config.keys():
-                    services_to_notify_config[recipient] = []
-                # add this service
-                services_to_notify_config[recipient].append(service)
+    if 'services' in config_params['config']['email'] and config_params['config']['email']['services']:
+        for config in [service_config, config_params['config']]:
+            # setup notices
+            if 'notify' in config:
+                for recipient in config['notify']:
+                    # check if email already exists
+                    if not recipient in services_to_notify_config.keys():
+                        services_to_notify_config[recipient] = []
+                    # add this service
+                    services_to_notify_config[recipient].append(service)
 
     bar.next()
 bar.finish()
@@ -281,7 +282,7 @@ print('Write log file... {}'.format(services_log_file_path))
 services_log_file = open(services_log_file_path, 'a')
 
 # iterate through all services
-for service, service_config in cli_config['services'].items():
+for service, service_config in config_params['services'].items():
     if service in services_in_error:
         new_status = services_in_error[service]
     else:
@@ -424,7 +425,7 @@ if notify_email:
     # messages
     for service, status in changes.items():
         # default notifications
-        for email_address in cli_config['config']['notify']:
+        for email_address in config_params['config']['notify']:
             if email_address not in recipients_to_notify:
                 recipients_to_notify.append(email_address)
             # create a list if required
@@ -433,8 +434,8 @@ if notify_email:
             # messages[recipient].append(service + ' : ' + status)
 
         # extra notifications per service
-        if 'notify' in cli_config['services'][service].keys():
-            for email_address in cli_config['services'][service]['notify']:
+        if 'notify' in config_params['services'][service].keys():
+            for email_address in config_params['services'][service]['notify']:
                 if email_address not in recipients_to_notify:
                     recipients_to_notify.append(email_address)
 
@@ -448,7 +449,7 @@ if notify_email:
     # PREPARE MAILS
     ####################################
     # no mail config - allow tmp files to be created!!
-    if not cli_config['config']['email']['enabled'] == True:
+    if not config_params['config']['email']['enabled'] == True:
         print('Email not enabled...')
         print()
         exit()
@@ -511,8 +512,8 @@ if notify_email:
             print("\n".join(message))
 
         try:
-            print('Sending mails to server {}...'.format(cli_config['config']['email']['server']))
-            smtpObj = smtplib.SMTP(cli_config['config']['email']['server'], 25)
+            print('Sending mails to server {}...'.format(config_params['config']['email']['server']))
+            smtpObj = smtplib.SMTP(config_params['config']['email']['server'], 25)
             # smtpObj.set_debuglevel(True)
             smtpObj.sendmail(sender, recipient, "\n".join(message))
             print("Successfully sent email to " + recipient + "...")

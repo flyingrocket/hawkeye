@@ -4,6 +4,7 @@ desktop:
   trigger: warning
 email:
   enabled: false
+  services: false
   server: ''
 dirs:
   log: "/tmp"
