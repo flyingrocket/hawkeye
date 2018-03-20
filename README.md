@@ -16,9 +16,13 @@ Written by Bruno Dooms, see <https://github.com/flyingrocket/hawkeye.git>.
 ### Install ###
 Python 3 must be inatalled.
 
-Install python ackages in Ubuntu or Debian:
+Install python packages in Ubuntu or Debian:
 
-    apt install python3-urllib3 python3-notify2 python3-yaml python3-requests
+    apt install python3-urllib3 python3-yaml python3-requests
+    
+Install this package on a Desktop:
+
+    apt install python3-notify2 
 
 ### Usage ###
 
