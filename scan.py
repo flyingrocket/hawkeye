@@ -179,7 +179,7 @@ urllib3.disable_warnings()
 http = urllib3.PoolManager()
 
 services_in_error = {}
-services_to_notify_config = {}
+services_to_notify = {}
 
 number_of_services = len(session['services'].items())
 
@@ -254,10 +254,10 @@ for service, service_config in session['services'].items():
             if 'notify' in config:
                 for recipient in config['notify']:
                     # check if email already exists
-                    if not recipient in services_to_notify_config.keys():
-                        services_to_notify_config[recipient] = []
+                    if not recipient in services_to_notify.keys():
+                        services_to_notify[recipient] = []
                     # add this service
-                    services_to_notify_config[recipient].append(service)
+                    services_to_notify[recipient].append(service)
 
     bar.next()
 bar.finish()
@@ -423,7 +423,7 @@ if notify_email:
     recipients_to_notify = []
     # messages
     for service, status in changes.items():
-        # default notifications
+        # default notifications from config file
         for email_address in session['config']['notify']:
             if email_address not in recipients_to_notify:
                 recipients_to_notify.append(email_address)
@@ -432,11 +432,12 @@ if notify_email:
             #     messages[recipient] = []
             # messages[recipient].append(service + ' : ' + status)
 
-        # extra notifications per service
-        if 'notify' in session['services'][service].keys():
-            for email_address in session['services'][service]['notify']:
-                if email_address not in recipients_to_notify:
-                    recipients_to_notify.append(email_address)
+        # extra notifications per service if enabled
+        if 'services' in session['config']['email'] and session['config']['email']['services']:
+            if 'notify' in session['services'][service].keys():
+                for email_address in session['services'][service]['notify']:
+                    if email_address not in recipients_to_notify:
+                        recipients_to_notify.append(email_address)
 
     # no recipients
     if len(recipients_to_notify) == 0:
@@ -459,7 +460,7 @@ if notify_email:
         warnings = 0
         body = []
         # iterate all service_notices
-        for service_to_notify in services_to_notify_config[recipient]:
+        for service_to_notify in services_to_notify[recipient]:
             if service_to_notify in services_in_error.keys():
                 warnings += 1
                 indent = "*** fail *** "
