@@ -66,13 +66,22 @@ parser.add_argument('-c', '--configfile', help='Config json or yaml file', requi
 # flag without arguments
 parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
 parser.add_argument('-m', '--monkey', help='mokey mode', required=False, default=False, action='store_true')
+parser.add_argument('-d', '--debugmode', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
 args = parser.parse_args()
 
-for services_log_file_path in [args.configfile, args.servicesfile]:
-    if not os.path.isfile(services_log_file_path) and not os.path.islink(services_log_file_path):
-        print('Abort! {} is not a file!'.format(services_log_file_path))
+for file_path in [args.configfile, args.servicesfile]:
+    if not os.path.isfile(file_path) and not os.path.islink(file_path):
+        print('Abort! {} is not a file!'.format(file_path))
         exit(1)
+
+####################################
+# DEBUGMODE
+####################################
+if args.debugmode:
+    debugmode = True
+else:
+    debugmode = False
 
 ####################################
 # MONKEY
@@ -273,6 +282,7 @@ print()
 # SERVICES TMP AND LOG FILES
 ####################################
 services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
+print('Write tmp file... {}'.format(services_tmp_file_path))
 services_tmp_file = open(services_tmp_file_path, 'w')
 
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
@@ -408,17 +418,21 @@ if notify_desktop:
 ####################################
 # COMPILE LIST OF EMAIL RECIPIENTS
 ####################################
+print()
 notify_email = False
 if session['config']['email']['enabled']:
+    if debugmode:
+        print('Email is enabled...')
     if len(changes) != 0:
         notify_email = True
 
-# log mails - purely for debugging - /tmp used
-mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
-mail_log_file = open(mail_log_file_path, 'a')
-
 # send messages
 if notify_email:
+    print('Changes detected, notify per e-mail...')
+    # log mails - purely for debugging - /tmp used
+    mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
+    print('Write mail log file... {}'.format(mail_log_file_path ))
+    mail_log_file = open(mail_log_file_path, 'a')
     print()
     recipients_to_notify = []
     # messages
@@ -427,10 +441,10 @@ if notify_email:
         for email_address in session['config']['notify']:
             if email_address not in recipients_to_notify:
                 recipients_to_notify.append(email_address)
-            # create a list if required
-            # if recipient not in messages.keys():
-            #     messages[recipient] = []
-            # messages[recipient].append(service + ' : ' + status)
+                # create a list if required
+                # if recipient not in messages.keys():
+                #     messages[recipient] = []
+                # messages[recipient].append(service + ' : ' + status)
 
         # extra notifications per service if enabled
         if 'services' in session['config']['email'] and session['config']['email']['services']:
@@ -448,19 +462,17 @@ if notify_email:
     ####################################
     # PREPARE MAILS
     ####################################
-    # no mail config - allow tmp files to be created!!
-    if not session['config']['email']['enabled'] == True:
-        print('Email not enabled...')
-        print()
-        exit()
-
     mails = {}
     for recipient in recipients_to_notify:
+        if debugmode:
+            print('Trying recipient {}'.format(recipient))
+
         mails[recipient] = {}
         warnings = 0
         body = []
         # iterate all service_notices
         for service_to_notify in services_to_notify[recipient]:
+            # print(services_to_notify)
             if service_to_notify in services_in_error.keys():
                 warnings += 1
                 indent = "*** fail *** "
@@ -472,15 +484,19 @@ if notify_email:
             # append all services to body
             body.append(newline + indent + service_to_notify + " " + service_status_log['new'][service_to_notify] + newline)
 
+        print()
+
         if warnings:
             status = str(warnings) + ' SERVICE(S) FAILED!'
         else:
             status = 'SERVICES OK'
 
         body.sort()
-        for b in body:
-            print(b)
-        exit()
+
+        if debugmode:
+            print('Mail body:')
+            for b in body:
+                print(b)
 
         hostname = socket.gethostname()
         subject = app_nickname.upper() + ' @' + hostname + ' ' + status
@@ -520,7 +536,7 @@ if notify_email:
             print("Successfully sent email to " + recipient + "...")
         except:
             print()
-            print("Error! Unable to send email...")
+            print("Abort! Unable to send email...")
             mail_log_file.write('ERROR sending mail to {}'.format(recipient))
             exit(1)
 

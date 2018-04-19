@@ -33,6 +33,7 @@ Install this package on a Desktop:
                         Config json or yaml file
     -v, --verbose         verbose
     -m, --monkey          mokey mode
+    -d, --debugmode       debug mode
     -t TAG, --tag TAG     tag, e.g. server name
 
 ### Example ###
