@@ -188,7 +188,7 @@ urllib3.disable_warnings()
 http = urllib3.PoolManager()
 
 services_in_error = {}
-services_to_notify = {}
+configured_services_per_recipient = {}
 
 number_of_services = len(session['services'].items())
 
@@ -256,20 +256,29 @@ for service, service_config in session['services'].items():
             if hash_calculated != hash_expected:
                 services_in_error[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
-    # add the service to recipients needed to be notified
-    if 'services' in session['config']['email'] and session['config']['email']['services']:
-        for config in [service_config, session['config']]:
+    # build an array of all recipients and their services
+    if session['config']['email']['enabled']:
+        # check if secondary recipients need to be added
+        if 'services' in session['config']['email'].keys() and session['config']['email']['services'] == True:
+            search_config_files = [service_config, session['config']]
+        else:
+            search_config_files = [session['config']]
+        # iterate
+        for config in search_config_files:
             # setup notices
             if 'notify' in config:
                 for recipient in config['notify']:
                     # check if email already exists
-                    if not recipient in services_to_notify.keys():
-                        services_to_notify[recipient] = []
+                    if not recipient in configured_services_per_recipient.keys():
+                        configured_services_per_recipient[recipient] = []
                     # add this service
-                    services_to_notify[recipient].append(service)
-
+                    configured_services_per_recipient[recipient].append(service)
     bar.next()
 bar.finish()
+
+if debugmode:
+    print('All services per mail address...')
+    print(configured_services_per_recipient)
 
 # print messages
 if len(messages):
@@ -283,12 +292,12 @@ print()
 ####################################
 services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
 print('Write tmp file... {}'.format(services_tmp_file_path))
-services_tmp_file = open(services_tmp_file_path, 'w')
+services_tmp_file_handle = open(services_tmp_file_path, 'w')
 
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
 # status_log_file_path = os.path.join(log_dir, script_name + '.status.log')
 print('Write log file... {}'.format(services_log_file_path))
-services_log_file = open(services_log_file_path, 'a')
+services_log_file_handle = open(services_log_file_path, 'a')
 
 # iterate through all services
 for service, service_config in session['services'].items():
@@ -298,12 +307,12 @@ for service, service_config in session['services'].items():
         new_status = 'OK'
 
     line = datetime_stamp + ';' + session['id'] + ';' + service + ';' + new_status + "\n"
-    services_tmp_file.write(line)
-    services_log_file.write(line)
+    services_tmp_file_handle.write(line)
+    services_log_file_handle.write(line)
 
 # close files
-services_tmp_file.close()
-services_log_file.close()
+services_tmp_file_handle.close()
+services_log_file_handle.close()
 ####################################
 # STATUS LOG FILE
 ####################################
@@ -335,11 +344,11 @@ print()
 # STORE STATUSES
 ####################################
 # get a list of all files in tmp dir
-tmp_files = os.listdir(tmp_dir)
+tmp_files_listing = os.listdir(tmp_dir)
 
 # add all the service tmp files to a list
 service_tmp_files = []
-for file in tmp_files:
+for file in tmp_files_listing:
     if re.search(app_nickname + '.' + session['hash'] + '.+\.services\.tmp$', file):
         service_tmp_files.append(file)
 
@@ -352,7 +361,7 @@ if not re.match('^/tmp/?$', tmp_dir):
         shutil.move(os.path.join(tmp_dir, service_tmp_files[i]), '/tmp')
         i += 1
 
-changes = {}
+changed_services = {}
 # script is ran for the first time (or after reboot)
 if len(service_tmp_files) == 1:
     print('No old runs detected...')
@@ -364,10 +373,10 @@ else:
 
         service_log_file_path = os.path.join(tmp_dir, service_tmp_files[i])
         # open the files
-        service_log_file = open(service_log_file_path, 'r')
+        service_log_file_handle = open(service_log_file_path, 'r')
 
         # store the contents of the files in a list
-        service_log_lines = service_log_file.readlines()
+        service_log_lines = service_log_file_handle.readlines()
 
         # store the contents of the lists in a associative dictionary
         service_status_log[run] = {}
@@ -390,13 +399,13 @@ else:
     for service, new_status in service_status_log['new'].items():
         # do not compare a new service
         if not service in service_status_log['old']:
-            changes[service] = new_status
+            changed_services[service] = new_status
             print('New service detected... {}'.format(service))
         elif not service_status_log['new'][service] == service_status_log['old'][service]:
-            changes[service] = new_status
+            changed_services[service] = new_status
             print('Change in service detected... {}'.format(service))
 
-if len(changes) == 0:
+if len(changed_services) == 0:
     print('No changes, no notifications...')
 
 ####################################
@@ -405,7 +414,7 @@ if len(changes) == 0:
 notify_desktop = False
 if session['config']['desktop']['enabled']:
     if session['config']['desktop']['trigger'] == 'change':
-        if len(changes) != 0:
+        if len(changed_services) != 0:
             notify_desktop = True
     # contiuous notifications
     else:
@@ -423,8 +432,25 @@ notify_email = False
 if session['config']['email']['enabled']:
     if debugmode:
         print('Email is enabled...')
-    if len(changes) != 0:
+    if len(changed_services) != 0:
         notify_email = True
+
+changed_service_recipients = []
+# check all services per recipent for changes
+for recipient, services in configured_services_per_recipient.items():
+    # check if changed
+    for service in services:
+        if service in changed_services:
+            # check if in dict
+            if not recipient in changed_service_recipients:
+                changed_service_recipients.append(recipient)
+                break
+
+if debugmode:
+    print('Changed services...')
+    print(changed_services)
+    print('Notify following recipients...')
+    print(changed_service_recipients)
 
 # send messages
 if notify_email:
@@ -432,48 +458,21 @@ if notify_email:
     # log mails - purely for debugging - /tmp used
     mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
     print('Write mail log file... {}'.format(mail_log_file_path ))
-    mail_log_file = open(mail_log_file_path, 'a')
+    mail_log_file_handle = open(mail_log_file_path, 'a')
     print()
-    recipients_to_notify = []
-    # messages
-    for service, status in changes.items():
-        # default notifications from config file
-        for email_address in session['config']['notify']:
-            if email_address not in recipients_to_notify:
-                recipients_to_notify.append(email_address)
-                # create a list if required
-                # if recipient not in messages.keys():
-                #     messages[recipient] = []
-                # messages[recipient].append(service + ' : ' + status)
-
-        # extra notifications per service if enabled
-        if 'services' in session['config']['email'] and session['config']['email']['services']:
-            if 'notify' in session['services'][service].keys():
-                for email_address in session['services'][service]['notify']:
-                    if email_address not in recipients_to_notify:
-                        recipients_to_notify.append(email_address)
-
-    # no recipients
-    if len(recipients_to_notify) == 0:
-        print('No email recipients found...')
-        print()
-        exit()
 
     ####################################
     # PREPARE MAILS
     ####################################
     mails = {}
-    for recipient in recipients_to_notify:
-        if debugmode:
-            print('Trying recipient {}'.format(recipient))
-
+    for recipient in changed_service_recipients:
+        # setup mail variables
         mails[recipient] = {}
         warnings = 0
         body = []
-        # iterate all service_notices
-        for service_to_notify in services_to_notify[recipient]:
-            # print(services_to_notify)
-            if service_to_notify in services_in_error.keys():
+        # iterate all services
+        for service in configured_services_per_recipient[recipient]:
+            if service in services_in_error.keys():
                 warnings += 1
                 indent = "*** fail *** "
                 newline = '' # '"\n"
@@ -482,9 +481,7 @@ if notify_email:
                 newline = ''
 
             # append all services to body
-            body.append(newline + indent + service_to_notify + " " + service_status_log['new'][service_to_notify] + newline)
-
-        print()
+            body.append(newline + indent + service + " " + service_status_log['new'][service] + newline)
 
         if warnings:
             status = str(warnings) + ' SERVICE(S) FAILED!'
@@ -494,9 +491,10 @@ if notify_email:
         body.sort()
 
         if debugmode:
-            print('Mail body:')
+            print('Mail body for {}'.format(recipient))
             for b in body:
                 print(b)
+            print()
 
         hostname = socket.gethostname()
         subject = app_nickname.upper() + ' @' + hostname + ' ' + status
@@ -528,26 +526,29 @@ if notify_email:
         if args.verbose:
             print("\n".join(message))
 
-        try:
-            print('Sending mails to server {}...'.format(session['config']['email']['server']))
-            smtpObj = smtplib.SMTP(session['config']['email']['server'], 25)
-            # smtpObj.set_debuglevel(True)
-            smtpObj.sendmail(sender, recipient, "\n".join(message))
-            print("Successfully sent email to " + recipient + "...")
-        except:
-            print()
-            print("Abort! Unable to send email...")
-            mail_log_file.write('ERROR sending mail to {}'.format(recipient))
-            exit(1)
+        if not debugmode:
+            try:
+                print('Sending mails to server {}...'.format(session['config']['email']['server']))
+                smtpObj = smtplib.SMTP(session['config']['email']['server'], 25)
+                # smtpObj.set_debuglevel(True)
+                smtpObj.sendmail(sender, recipient, "\n".join(message))
+                print("Successfully sent email to " + recipient + "...")
+            except:
+                print()
+                print("Abort! Unable to send email...")
+                mail_log_file_handle.write('ERROR sending mail to {}'.format(recipient))
+                exit(1)
+        else:
+            print('Debugmode, skip sending mail to {}...'.format(recipient))
 
         # log
         for line in message:
-            mail_log_file.write(line)
+            mail_log_file_handle.write(line)
 
-        mail_log_file.write("\n\n --- \n\n")
+        mail_log_file_handle.write("\n\n --- \n\n")
 
     # close log file
-    mail_log_file.close()
+    mail_log_file_handle.close()
 
     print()
 
