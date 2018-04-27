@@ -352,14 +352,16 @@ for file in tmp_files_listing:
     if re.search(app_nickname + '.' + session['hash'] + '.+\.services\.tmp$', file):
         service_tmp_files.append(file)
 
+# reverse sort to keep latest files
 service_tmp_files.sort(reverse=True)
 
-# just keep the 2 last files for comparison
-if not re.match('^/tmp/?$', tmp_dir):
-    i=2
-    while i < len(service_tmp_files):
-        shutil.move(os.path.join(tmp_dir, service_tmp_files[i]), '/tmp')
-        i += 1
+# remove old tmp files
+i=2 # keep 2 files
+while i < len(service_tmp_files):
+    file_path = os.path.join(tmp_dir, service_tmp_files[i])
+    print('Removing old tmp file {}...'.format(file_path))
+    os.remove(file_path)
+    i += 1
 
 changed_services = {}
 # script is ran for the first time (or after reboot)
