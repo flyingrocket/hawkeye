@@ -72,7 +72,7 @@ args = parser.parse_args()
 
 for file_path in [args.configfile, args.servicesfile]:
     if not os.path.isfile(file_path) and not os.path.islink(file_path):
-        print('Abort! {} is not a file!'.format(file_path))
+        print('Abort! Cannot access {}!'.format(file_path))
         exit(1)
 
 ####################################
