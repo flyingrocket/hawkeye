@@ -185,7 +185,7 @@ def desktop_notify(messages):
 urllib3.disable_warnings()
 
 # create the http object
-http = urllib3.PoolManager()
+http = urllib3.PoolManager(maxsize=100, block=True)
 
 services_in_error = {}
 configured_services_per_recipient = {}
@@ -237,9 +237,9 @@ for service, service_config in session['services'].items():
 
     # check the response
     try:
-        r = http.request('GET', service, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
+        r = http.request('GET', service, redirect=False, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
     except Exception as e:
-        services_in_error[service] = 'FAILED CONNECTION' # + str(e)
+        services_in_error[service] = "FAILED CONNECTION \n\t" + str(e)
 
     if service not in services_in_error.keys():
         # add to error list if response does not match
