@@ -235,9 +235,17 @@ for service, service_config in session['services'].items():
         if random.randint(0, 1) == 1:
             status_expected = random.choice(list(response_codes.keys()))
 
+    # allow redirect by default
+    allow_redirect = True
+
+    # redirect
+    if 'redirect' in service_config:
+        if service_config['redirect'] is False:
+            allow_redirect = False
+
     # check the response
     try:
-        r = http.request('GET', service, redirect=False, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
+        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
     except Exception as e:
         services_in_error[service] = "FAILED CONNECTION \n\t" + str(e)
 
