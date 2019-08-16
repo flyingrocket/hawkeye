@@ -239,7 +239,7 @@ for service, service_config in session['services'].items():
     try:
         r = http.request('GET', service, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
     except Exception as e:
-        services_in_error[service] = 'FAILED CONNECTION' # + str(e)
+        services_in_error[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
 
     if service not in services_in_error.keys():
         # add to error list if response does not match
