@@ -105,9 +105,17 @@ for type, file_path in cli_params.items():
 
     with open(file_path) as file:
         if re.search('.+\.json$', file_path):
-            session[type] = json.load(file)
+            try:
+                session[type] = json.load(file)
+            except:
+                print('Exception in parsing json file ' + file_path + '!')
+                exit(1)
         elif re.search('.+\.ya?ml$', file_path):
-            session[type] = yaml.load(file)
+            try:
+                session[type] = yaml.load(file, Loader=yaml.SafeLoader)
+            except:
+                print('Exception in parsing yaml file ' + file_path + '!')
+                exit(1)
         else:
             print('{} file not supported!'.format(type))
             exit(1)
