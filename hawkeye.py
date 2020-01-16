@@ -45,6 +45,7 @@ from progress.bar import Bar
 app_version = "2.0"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
+user_agent = app_name + " " + app_version
 
 session = {}
 session['dir'] = os.path.dirname(__file__)
@@ -253,7 +254,10 @@ for service, service_config in session['services'].items():
 
     # check the response
     try:
-        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']))
+        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']), headers ={ 
+            'User-Agent': user_agent 
+            }
+            )
     except Exception as e:
         services_in_error[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
 
