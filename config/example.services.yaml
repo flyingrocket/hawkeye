@@ -1,18 +1,24 @@
 ---
+# define the service as a list, even if no options are required
 "http://muppets1.domain": {}
 "http://muppets2.domain": {}
 "http://muppets3.domain": {}
 "http://muppets4.domain":
+  # list of recipients who get notified   
   notify:
   - chef@muppets.domain
+  # expected status
   status: 200
+  # service will be monitored only if tag is matched with -t option
   tag: "<tag>"
+  # check if the hash of the page is as expected
   hash: "<md5_hash>"
 "http://muppets5.domain":
   notify:
   - statler@muppets.domain
   - waldorf@muppets.domain
   status: 403
-  tag: "<tag>"
-  hash: "<md5_hash>"
+  # if no tag is defined, service will be monitored regardless of the -t option
+  # tag: "<tag>"
+  # do not follow a redirect of the page
   redirect: false
