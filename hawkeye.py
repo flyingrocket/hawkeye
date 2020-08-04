@@ -29,6 +29,8 @@ import socket
 import sys
 # move files to other dirs
 import shutil
+# time scripts
+import time
 # http requests:
 # $ apt install python3-urllib3
 import urllib3
@@ -42,7 +44,7 @@ from progress.bar import Bar
 ####################################
 # MAIN VARIABLES
 ####################################
-app_version = "2.0"
+app_version = "2.1"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
@@ -58,6 +60,8 @@ date_stamp = str(datetime.datetime.now().date())
 format = '%Y-%m-%d_%H%M%S'
 datetime_stamp = str(datetime.datetime.now().strftime(format))
 
+# time the script
+start_time = time.time()
 ####################################
 # PARSE ARGUMENTS
 ####################################
@@ -66,7 +70,7 @@ parser.add_argument('-s', '--servicesfile', help='Services json or yaml file', r
 parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
 # flag without arguments
 parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
-parser.add_argument('-m', '--monkey', help='mokey mode', required=False, default=False, action='store_true')
+parser.add_argument('-m', '--monkey', help='monkey mode', required=False, default=False, action='store_true')
 parser.add_argument('-d', '--debugmode', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
 args = parser.parse_args()
@@ -180,7 +184,7 @@ def desktop_notify(messages):
 
     try:
         notify2.init(app_name + app_version)
-        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' warning', "\n".join(messages))
+        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' ERROR', "\n".join(messages))
         n.show()
     except Exception as e:
         # the first one is usually the message.
@@ -296,7 +300,89 @@ for service, service_config in session['services'].items():
     bar.next()
 bar.finish()
 
+####################################
+# SERVICE HISTORY
+####################################
+history_tmp_file = os.path.join('/tmp', app_nickname + '.history')
+
+try:
+    with open(history_tmp_file) as file:
+        history_list = yaml.load(file, Loader=yaml.FullLoader)
+        # Do something with the file
+except IOError:
+    history_list = {}
+#
+# # write the file if it doesn't exist
+# file = open(history_tmp_file, 'a+') # do not use w+ because getsize will not work
+# file.close()
+#
+# if os.path.getsize(history_tmp_file) == 0:
+#     print('file is empty')
+#     history_list = {}
+# else:
+#     print('read from file')
+#     with open(history_tmp_file) as file:
+#         history_list = yaml.load(file, Loader=yaml.FullLoader)
+if len(services_in_error.items()):
+    print()
+    print('SERVICES IN ERROR')
+    for service, reply in services_in_error.items():
+        print('-', service, ': ', reply)
+    # print(services_in_error)
+
 if debugmode:
+    print()
+    print('Old service history:')
+    print(history_list)
+
+# keep sucessive errors
+for service, service_config in session['services'].items():
+    if service in services_in_error.keys():
+        if service in history_list:
+            history_list[service] += 1
+        else:
+            history_list[service] = 1
+    else:
+        history_list[service] = 0
+
+file = open(history_tmp_file, 'w+')
+history_dumped = yaml.dump(history_list, file)
+# print('Services in error')
+# print(services_in_error.keys())
+#
+# if len(services_in_error.keys()):
+#     print('yes, there are services in error')
+
+if debugmode:
+    print('New service history:')
+    print(history_list)
+
+# make a copy of the services in error
+services_in_error1 = dict(services_in_error)
+
+if len(services_in_error1.keys()) > 0:
+    print()
+    print('SUCCESSIVE ERRORS') 
+    successive_errors = session['config']['notify_when']['successive_errors']
+
+    if debugmode:
+        print('Successive errors:', successive_errors)
+        print()
+
+    for service in services_in_error1.keys():
+        print('Error number', history_list[service], 'for service', service)
+        if history_list[service] < successive_errors:
+            del services_in_error[service]
+            print('*** WARNING *** This error ({}) did not reach threshold ({}). Removing notification...'.format(history_list[service], successive_errors))
+
+if debugmode and len(services_in_error.items()):
+    print()
+    print('NOTIFY SERVICES IN ERROR')
+    for service, reply in services_in_error.items():
+        print('-', service, ': ', reply)
+
+if debugmode:
+    print()
     print('All services per mail address...')
     print(configured_services_per_recipient)
 
@@ -338,24 +424,24 @@ services_log_file_handle.close()
 ####################################
 # print final status
 if len(services_in_error) == 0:
-    global_status = 'OK!'
+    global_status = 'OK'
 else:
-    global_status = 'WARNING'
+    global_status = 'ERROR'
 
 print()
-print('SERVICES {}!'.format(global_status))
+print('******* SERVICES STATUS: {} *******'.format(global_status))
 
 messages = []
-if global_status == "WARNING":
-    print()
+if global_status == "ERROR":
+    # print()
     for service, status in services_in_error.items():
-        messages.append("\t{} {}".format(service, status))
+        messages.append("- {} {}".format(service, status))
 
     for message in messages:
         print(message)
     #
     # if config['desktop']['enabled']:
-    #     if config['desktop']['trigger'] == 'warning':
+    #     if config['desktop']['trigger'] == 'ERROR':
     #         desktop_notify(messages)
 
 print()
@@ -440,7 +526,7 @@ if session['config']['desktop']['enabled']:
             notify_desktop = True
     # contiuous notifications
     else:
-        if global_status == 'WARNING':
+        if global_status == 'ERROR':
             notify_desktop = True
 
 if notify_desktop:
@@ -449,13 +535,20 @@ if notify_desktop:
 ####################################
 # COMPILE LIST OF EMAIL RECIPIENTS
 ####################################
-print()
 notify_email = False
 if session['config']['email']['enabled']:
-    if debugmode:
-        print('Email is enabled...')
     if len(changed_services) != 0:
-        notify_email = True
+        if global_status == 'OK' and session['config']['notify_when']['services_ok'] != True:
+            notify_email = False
+        else:
+            notify_email = True
+
+if debugmode:
+    if notify_email == True:
+        print('Email notification triggered...')
+    else:
+        print('Email notification NOT triggered...')
+
 
 changed_service_recipients = []
 # check all services per recipent for changes
@@ -469,6 +562,7 @@ for recipient, services in configured_services_per_recipient.items():
                 break
 
 if debugmode:
+    print()
     print('Changed services...')
     print(changed_services)
     print('Notify following recipients...')
@@ -476,6 +570,7 @@ if debugmode:
 
 # send messages
 if notify_email:
+    print()
     print('Changes detected, notify per e-mail...')
     # log mails - purely for debugging - /tmp used
     mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
@@ -490,12 +585,12 @@ if notify_email:
     for recipient in changed_service_recipients:
         # setup mail variables
         mails[recipient] = {}
-        warnings = 0
+        errors = 0
         body = []
         # iterate all services
         for service in configured_services_per_recipient[recipient]:
             if service in services_in_error.keys():
-                warnings += 1
+                errors += 1
                 indent = "*** fail *** "
                 newline = '' # '"\n"
             else:
@@ -505,8 +600,8 @@ if notify_email:
             # append all services to body
             body.append(newline + indent + service + " " + service_status_log['new'][service] + newline)
 
-        if warnings:
-            status = str(warnings) + ' SERVICE(S) FAILED!'
+        if errors:
+            status = str(errors) + ' SERVICE(S) FAILED!'
         else:
             status = 'SERVICES OK'
 
@@ -573,5 +668,10 @@ if notify_email:
     mail_log_file_handle.close()
 
     print()
+else:
+    print('No notification e-mails sent...')
 
+sec = int(round(time.time()-start_time))
+script_time = datetime.timedelta(seconds =sec)
+print('Script time:', script_time)
 print('Bye...')

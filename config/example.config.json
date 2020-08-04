@@ -17,6 +17,10 @@
     "gonzo@muppets.domain",
     "fozzie@muppets.domain"
     ],
+    "notify_when":{
+        "services_ok":true,
+        "successive_errors":1
+    },
     "request": {
         "timeout":15,
         "retries":3

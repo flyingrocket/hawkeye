@@ -6,10 +6,14 @@ email:
   enabled: false
   services: false
   server: ''
+  report_services_ok: true
 dirs:
   log: "/tmp"
   tmp: "/tmp"
 notify: []
+notify_when:
+  services_ok: true
+  successive_errors: 1
 request:
   timeout: 15
   retries: 3
