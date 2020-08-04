@@ -24,13 +24,17 @@ email:
   # smtp server
   server: localhost
 # list of persons to be notified
-# a change in any service will be reported
 notify:
 - kermit@muppets.domain
 - gonzo@muppets.domain
 - fozzie@muppets.domain
-# some values while doing the request
-# install package: python3-urllib3
+# notification options
+notify_when:
+  # get a notification when services are ok?
+  services_ok: false # do not send an email when services are restored
+  # get an error when services fail X amount of consecutive times
+  successive_errors: 1 # 1 will trigger a notification on the first time an error occurs
+# some values while doing the request. install package: python3-urllib3
 request:
   timeout: 15
   retries: 3
