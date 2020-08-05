@@ -303,7 +303,7 @@ bar.finish()
 ####################################
 # SERVICE HISTORY
 ####################################
-history_tmp_file = os.path.join('/tmp', app_nickname + '.history')
+history_tmp_file = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.history')
 
 try:
     with open(history_tmp_file) as file:
