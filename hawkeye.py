@@ -258,8 +258,8 @@ for service, service_config in session['services'].items():
 
     # check the response
     try:
-        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']), headers ={ 
-            'User-Agent': user_agent 
+        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']), headers ={
+            'User-Agent': user_agent
             }
             )
     except Exception as e:
@@ -307,7 +307,7 @@ history_tmp_file = os.path.join('/tmp', app_nickname + '.history')
 
 try:
     with open(history_tmp_file) as file:
-        history_list = yaml.load(file, Loader=yaml.FullLoader)
+        history_list = yaml.load(file, Loader=yaml.SafeLoader)
         # Do something with the file
 except IOError:
     history_list = {}
@@ -362,7 +362,7 @@ services_in_error1 = dict(services_in_error)
 
 if len(services_in_error1.keys()) > 0:
     print()
-    print('SUCCESSIVE ERRORS') 
+    print('SUCCESSIVE ERRORS')
     successive_errors = session['config']['notify_when']['successive_errors']
 
     if debugmode:
