@@ -1,6 +1,6 @@
 ---
 desktop:
-  enabled: true
+  enabled: false
   trigger: warning
 email:
   enabled: false
