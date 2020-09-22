@@ -46,7 +46,7 @@ from progress.bar import Bar
 ####################################
 app_version = "2.1"
 app_name = "hawkeye"
-app_nickname = app_name + app_version.split('.')[0]
+app_nickname = app_name + ' ' + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
 
 session = {}
