@@ -66,8 +66,9 @@ start_time = time.time()
 # PARSE ARGUMENTS
 ####################################
 parser = argparse.ArgumentParser(description=app_name + app_version)
-parser.add_argument('-s', '--servicesfile', help='Services json or yaml file', required=True)
-parser.add_argument('-c', '--configfile', help='Config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
+parser.add_argument('-s', '--servicesfile', help='services json or yaml file', required=True)
+parser.add_argument('-c', '--configfile', help='config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
+parser.add_argument('-l', '--logpath', help='log path to store hawkeye statuses', required=False, default='/tmp')
 # flag without arguments
 parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
 parser.add_argument('-m', '--monkey', help='monkey mode', required=False, default=False, action='store_true')
@@ -303,7 +304,7 @@ bar.finish()
 ####################################
 # SERVICE HISTORY
 ####################################
-history_tmp_file = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.history')
+history_tmp_file = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.history')
 
 try:
     with open(history_tmp_file) as file:
@@ -572,8 +573,8 @@ if debugmode:
 if notify_email:
     print()
     print('Changes detected, notify per e-mail...')
-    # log mails - purely for debugging - /tmp used
-    mail_log_file_path = os.path.join('/tmp', app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
+    # log mails - purely for debugging
+    mail_log_file_path = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
     print('Write mail log file... {}'.format(mail_log_file_path ))
     mail_log_file_handle = open(mail_log_file_path, 'a')
     print()
