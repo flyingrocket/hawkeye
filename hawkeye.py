@@ -48,6 +48,8 @@ app_version = "2.2"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
+git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
+app_full_version = '{}.{}'.format(app_version, git_hash)
 
 session = {}
 session['dir'] = os.path.dirname(__file__)
@@ -68,9 +70,7 @@ start_time = time.time()
 # check version
 if sys.argv[1]:
     if sys.argv[1] == '-v' or sys.argv[1] == '--version':
-        # os.system('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;')
-        hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
-        print('{}.{}'.format(app_version, hash))
+        print(app_full_version)
         exit()
         
 parser = argparse.ArgumentParser(description=app_name + app_version)
@@ -78,7 +78,6 @@ parser.add_argument('-s', '--servicesfile', help='services json or yaml file', r
 parser.add_argument('-c', '--configfile', help='config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
 parser.add_argument('-l', '--logpath', help='log path to store hawkeye statuses', required=False, default='/tmp')
 # flag without arguments
-parser.add_argument('-v', '--verbose', help='verbose', required=False, default=False, action='store_true')
 parser.add_argument('-m', '--monkey', help='monkey mode', required=False, default=False, action='store_true')
 parser.add_argument('-d', '--debugmode', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
@@ -173,7 +172,7 @@ if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     exit(1)
 
 print()
-print('{} {} ID {}'.format(app_name, app_version, session['id']))
+print('{} {} ID {}'.format(app_name, app_full_version, session['id']))
 print()
 
 ####################################
@@ -673,10 +672,11 @@ if notify_email:
         message.append('')
         message.append('Run ID: {}'.format(session['id']))
 
-        if args.verbose:
+        if debugmode:
             print("\n".join(message))
-
-        if not debugmode:
+            print()
+            print('Debugmode, skip sending mail to {}...'.format(recipient))
+        else:
             try:
                 print('Sending mails to server {}...'.format(session['config']['email']['server']))
                 smtpObj = smtplib.SMTP(session['config']['email']['server'], 25)
@@ -688,9 +688,7 @@ if notify_email:
                 print("Abort! Unable to send email...")
                 mail_log_file_handle.write('ERROR sending mail to {}'.format(recipient))
                 exit(1)
-        else:
-            print('Debugmode, skip sending mail to {}...'.format(recipient))
-
+            
         # log
         for line in message:
             mail_log_file_handle.write(line)
