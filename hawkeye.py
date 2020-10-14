@@ -170,7 +170,21 @@ print()
 ####################################
 # FUNCTIONS
 ####################################
+def pretty_title(string, type = 'h2'):
+    string = ' {} '.format(string)
 
+    if type == 'h1':
+        symbol = '$'
+        width = 80
+    elif type == 'h2':
+        symbol = '_'
+        width = 80
+    elif type == 'h3':
+        symbol = '_'
+        width = 60
+
+    return string.center(width, symbol)
+    
 # notifications for the desktop
 def desktop_notify(messages):
 
@@ -326,7 +340,8 @@ except IOError:
 #         history_list = yaml.load(file, Loader=yaml.FullLoader)
 if len(services_in_error.items()):
     print()
-    print('SERVICES IN ERROR')
+    print(pretty_title('Services in Error'))
+          
     for service, reply in services_in_error.items():
         print('-', service, ': ', reply)
     # print(services_in_error)
@@ -363,7 +378,7 @@ services_in_error1 = dict(services_in_error)
 
 if len(services_in_error1.keys()) > 0:
     print()
-    print('SUCCESSIVE ERRORS')
+    print(pretty_title('Successive Errors'))
     successive_errors = session['config']['notify_when']['successive_errors']
 
     if debugmode:
@@ -378,7 +393,8 @@ if len(services_in_error1.keys()) > 0:
 
 if debugmode and len(services_in_error.items()):
     print()
-    print('NOTIFY SERVICES IN ERROR')
+    print(pretty_title('Report'))
+    
     for service, reply in services_in_error.items():
         print('-', service, ': ', reply)
 
@@ -393,10 +409,12 @@ if len(messages):
     for m in messages:
         print(m)
 
-print()
 ####################################
 # SERVICES TMP AND LOG FILES
 ####################################
+print()
+print(pretty_title('Logging'))
+
 services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
 print('Write tmp file... {}'.format(services_tmp_file_path))
 services_tmp_file_handle = open(services_tmp_file_path, 'w')
@@ -405,6 +423,9 @@ services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp +
 # status_log_file_path = os.path.join(log_dir, script_name + '.status.log')
 print('Write log file... {}'.format(services_log_file_path))
 services_log_file_handle = open(services_log_file_path, 'a')
+
+print()
+print(pretty_title('Status'))
 
 # iterate through all services
 for service, service_config in session['services'].items():
@@ -466,9 +487,11 @@ service_tmp_files.sort(reverse=True)
 i=2 # keep 2 files
 while i < len(service_tmp_files):
     file_path = os.path.join(tmp_dir, service_tmp_files[i])
-    print('Removing old tmp file {}...'.format(file_path))
+    # print('Removing old tmp file {}...'.format(file_path))
     os.remove(file_path)
     i += 1
+
+print(pretty_title('Notifications'))
 
 changed_services = {}
 # script is ran for the first time (or after reboot)
