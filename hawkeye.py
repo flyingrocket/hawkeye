@@ -45,7 +45,7 @@ from progress.bar import Bar
 ####################################
 # MAIN VARIABLES
 ####################################
-app_version = "2.2"
+app_version = "3.0"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
@@ -368,11 +368,11 @@ except IOError:
 #         history_list = yaml.load(file, Loader=yaml.FullLoader)
 if len(services_in_error.items()):
     print()
-    print(pretty_title('Services in Error'))
+    print(pretty_title('Services In Error'))
     print()      
     
     for service, reply in services_in_error.items():
-        print(service, ': ', reply)
+        print(service.ljust(60, '.'), reply)
     # print(services_in_error)
 
 if debugmode:
@@ -407,26 +407,27 @@ services_in_error1 = dict(services_in_error)
 
 if len(services_in_error1.keys()) > 0:
     print()
-    print(pretty_title('Successive Errors'))
-    print()
+    #print(pretty_title('Successive Errors'))
+    print('Successive Errors:')
+    #print()  
     successive_errors = session['config']['notify_when']['successive_errors']
 
-    if debugmode:
-        print('Successive errors:', successive_errors)
-        print()
+    #if debugmode:
+        #print('Successive errors:', successive_errors)
+        #print()
 
     for service in services_in_error1.keys():
-        print('Error number', history_list[service], 'for service', service)
+        print(service.ljust(60, '.'), history_list[service])
         if history_list[service] < successive_errors:
             del services_in_error[service]
             print('*** WARNING *** This error ({}) did not reach threshold ({}). Removing notification...'.format(history_list[service], successive_errors))
 
-if debugmode and len(services_in_error.items()):
-    print()
-    print(pretty_title('Report'))
-    print()
-    for service, reply in services_in_error.items():
-        print('-', service, ': ', reply)
+#if debugmode and len(services_in_error.items()):
+    #print()
+    #print(pretty_title('Services In Error'))
+    #print()
+    #for service, reply in services_in_error.items():
+        #print('-', service, ': ', reply)
 
 if debugmode:
     print()
@@ -453,7 +454,14 @@ services_tmp_file_handle = open(services_tmp_file_path, 'w')
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
 # status_log_file_path = os.path.join(log_dir, script_name + '.status.log')
 print('Write log file... {}'.format(services_log_file_path))
+print()
 services_log_file_handle = open(services_log_file_path, 'a')
+
+for service, service_config in session['services'].items():
+    if service in services_in_error.keys():
+        print(service.ljust(60, '.'), 'FAIL')
+    else:
+        print(service.ljust(60, '.'), 'OK')
 
 print()
 print(pretty_title('Status'))
@@ -483,7 +491,7 @@ if len(services_in_error) == 0:
 else:
     global_status = 'ERROR'
 
-print('******* SERVICES STATUS: {} *******'.format(global_status))
+print('Global Status'.ljust(60, '.'), global_status)
 
 ####################################
 # STORE STATUSES
