@@ -41,6 +41,7 @@ import yaml
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 # progress bar
 from progress.bar import Bar
+
 ####################################
 # MAIN VARIABLES
 ####################################
@@ -55,6 +56,22 @@ session = {}
 session['dir'] = os.path.dirname(__file__)
 session['id'] = str(uuid.uuid4())
 session['hash'] = hashlib.md5('.'.join(sys.argv[1:]).encode('utf-8')).hexdigest()
+
+####################################
+# CREATE LOCK FILE
+####################################
+lockfile = "/tmp/{}.LOCK.{}".format(app_nickname, session['hash'])
+
+# it exists, abort
+if os.path.isfile(lockfile):
+    print('Abort, lock file exists! {}'.format(lockfile))
+    exit(1)
+# create it
+else:
+    file = open(lockfile, "w")
+    # file.write("\n")
+    file.close()
+
 ####################################
 # DATE AND TIME
 ####################################
@@ -64,6 +81,7 @@ datetime_stamp = str(datetime.datetime.now().strftime(format))
 
 # time the script
 start_time = time.time()
+
 ####################################
 # PARSE ARGUMENTS
 ####################################
@@ -449,6 +467,7 @@ for service, service_config in session['services'].items():
 # close files
 services_tmp_file_handle.close()
 services_log_file_handle.close()
+
 ####################################
 # STATUS LOG FILE
 ####################################
@@ -702,7 +721,19 @@ if notify_email:
 else:
     print('No notification e-mails sent...')
 
+####################################
+# REMOVE LOCK FILE
+####################################
+# remove the lock file
+if os.path.isfile(lockfile):
+    os.remove(lockfile)
+
+####################################
+# TIME THE SCRIPT
+####################################
 sec = int(round(time.time()-start_time))
 script_time = datetime.timedelta(seconds =sec)
+print()
 print('Script time:', script_time)
+print()
 print('Bye...')
