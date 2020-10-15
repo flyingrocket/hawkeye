@@ -50,18 +50,6 @@ dname = os.path.dirname(abspath)
 os.chdir(dname)
 
 ####################################
-# VERSION
-####################################
-app_version = "2.3"
-app_name = "hawkeye"
-app_nickname = app_name + app_version.split('.')[0]
-user_agent = app_name + " " + app_version
-
-git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
-git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
-app_full_version = '{}.{}.{}'.format(app_version, git_commits, git_hash)
-
-####################################
 # SESSION
 ####################################
 session = {}
@@ -77,6 +65,21 @@ for option in hash_blacklist:
         argument_list_hash.remove(option) # remove these options for the hash
 
 session['hash'] = hashlib.md5('.'.join(argument_list_hash).encode('utf-8')).hexdigest()
+
+####################################
+# VERSION
+####################################
+app_version = "2.3"
+app_name = "hawkeye"
+app_nickname = app_name + app_version.split('.')[0]
+user_agent = app_name + " " + app_version
+
+git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
+git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
+app_full_version = '{}.{}.{}'.format(app_version, git_commits, git_hash)
+
+app_version_line = 'Version: {} {}'.format(app_name, app_full_version)
+app_hash_line = 'Hash/ID: {} {}'.format(session['hash'], session['id'])
 
 ####################################
 # DATE AND TIME
@@ -106,6 +109,7 @@ parser.add_argument('-m', '--monkey', help='monkey mode', required=False, defaul
 parser.add_argument('-d', '--debug', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
 parser.add_argument('-v', '--version', help='version', required=False, action='store_true')
+parser.add_argument('--quiet', help='Do not send e-mails', required=False, default=False, action='store_true')
 args = parser.parse_args()
 
 for file_path in [args.configfile, args.servicesfile]:
@@ -240,8 +244,8 @@ else:
 ####################################
 # KICK-OFF
 ####################################
-print('Version: {} {}'.format(app_name, app_full_version))
-print('Hash/ID: {} {}'.format(session['hash'], session['id']))
+print(app_version_line)
+print(app_hash_line)
 print()
 
 ####################################
@@ -611,30 +615,17 @@ print(pretty_title('Notifications'))
 print()
 
 notify_email = False
-if session['config']['email']['enabled']:
-    if len(changed_services) != 0:
-        if global_status == 'OK' and session['config']['notify_when']['services_ok'] != True:
-            notify_email = False
-        else:
-            notify_email = True
 
-if debugmode:
-    if notify_email == True:
-        print('Email notification triggered...')
-    else:
-        print('Email notification not triggered...')
-
-
-changed_service_recipients = []
-# check all services per recipent for changes
-for recipient, services in configured_services_per_recipient.items():
-    # check if changed
-    for service in services:
-        if service in changed_services:
-            # check if in dict
-            if not recipient in changed_service_recipients:
-                changed_service_recipients.append(recipient)
-                break
+# allow a quiet cli run
+if args.quiet:
+    print('Quiet mode is set...')
+else:    
+    if session['config']['email']['enabled']:
+        if len(changed_services) != 0:
+            if global_status == 'OK' and session['config']['notify_when']['services_ok'] != True:
+                notify_email = False
+            else:
+                notify_email = True
 
 if debugmode:
     print()
@@ -645,8 +636,28 @@ if debugmode:
 
 # send messages
 if notify_email:
+    if debugmode:
+        print('Send notifcations (simulated)...')
+    else:
+        print('Send notifications (e-mail)...')
+        
     print()
-    print('Changes detected, notify per e-mail...')
+    
+    changed_service_recipients = []
+    # check all services per recipent for changes
+    for recipient, services in configured_services_per_recipient.items():
+        # check if changed
+        for service in services:
+            if service in changed_services:
+                # check if in dict
+                if not recipient in changed_service_recipients:
+                    changed_service_recipients.append(recipient)
+                    break
+    
+    if debugmode:
+        print(changed_service_recipients)
+        print()
+    
     # log mails - purely for debugging
     mail_log_file_path = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
     print('Write mail log file... {}'.format(mail_log_file_path ))
@@ -662,6 +673,12 @@ if notify_email:
         mails[recipient] = {}
         errors = 0
         body = []
+        
+        body.append(app_version_line)
+        body.append(app_hash_line)
+        body.append('')
+        body.append('Verifying services...')
+        
         # iterate all services
         for service in configured_services_per_recipient[recipient]:
             if service in services_in_error.keys():
@@ -712,8 +729,8 @@ if notify_email:
         for line in mails[recipient]['body']:
             message.append(line)
 
-        message.append('')
-        message.append('Run ID: {}'.format(session['id']))
+        #message.append('')
+        #message.append('Run ID: {}'.format(session['id']))
 
         if debugmode:
             print("\n".join(message))
