@@ -43,14 +43,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 from progress.bar import Bar
 
 ####################################
-# MAIN VARIABLES
+# VERSION
 ####################################
 app_version = "2.3"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
+
+git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
 git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
-app_full_version = '{}.{}'.format(app_version, git_hash)
+app_full_version = '{}.{}.{}'.format(app_version, git_commits, git_hash)
 
 ####################################
 # SESSION
@@ -68,21 +70,6 @@ for option in hash_blacklist:
         argument_list_hash.remove(option) # remove these options for the hash
 
 session['hash'] = hashlib.md5('.'.join(argument_list_hash).encode('utf-8')).hexdigest()
-
-####################################
-# CREATE LOCK FILE
-####################################
-lockfile = "/tmp/{}.LOCK.{}".format(app_nickname, session['hash'])
-
-# it exists, abort
-if os.path.isfile(lockfile):
-    print('Abort, lock file exists! {}'.format(lockfile))
-    exit(1)
-# create it
-else:
-    file = open(lockfile, "w")
-    # file.write("\n")
-    file.close()
 
 ####################################
 # DATE AND TIME
@@ -119,17 +106,13 @@ for file_path in [args.configfile, args.servicesfile]:
         print('Abort! Cannot access {}!'.format(file_path))
         exit(1)
 
-####################################
-# DEBUGMODE
-####################################
+# debugmode
 if args.debug:
     debugmode = True
 else:
     debugmode = False
 
-####################################
-# MONKEY
-####################################
+# random values
 if args.monkey:
     monkey = True
 else:
@@ -202,14 +185,7 @@ if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     exit(1)
 
 ####################################
-# VERSION
-####################################
-print('Version: {} {}'.format(app_name, app_full_version))
-print('Hash/ID: {} {}'.format(session['hash'], session['id']))
-print()
-
-####################################
-# FUNCTIONS
+# LIB
 ####################################
 def pretty_title(string, type = 'h2'):
     string = ' {} '.format(string)
@@ -246,6 +222,28 @@ def desktop_notify(messages):
         # the first one is usually the message.
         print('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
         exit(1)
+        
+####################################
+# INITIATE APPLICATION
+####################################
+print('Version: {} {}'.format(app_name, app_full_version))
+print('Hash/ID: {} {}'.format(session['hash'], session['id']))
+print()
+
+####################################
+# CREATE LOCK FILE
+####################################
+lockfile = "/tmp/{}.LOCK.{}".format(app_nickname, session['hash'])
+
+# it exists, abort
+if os.path.isfile(lockfile):
+    print('Abort, lock file exists! {}'.format(lockfile))
+    exit(1)
+# create it
+else:
+    file = open(lockfile, "w")
+    # file.write("\n")
+    file.close()
 
 ####################################
 # ITERATE SERVICES
