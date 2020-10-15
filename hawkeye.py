@@ -189,7 +189,6 @@ if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     print("Abort! Desktop trigger must be value warning|change")
     exit(1)
 
-print()
 print('{} {} ID {}'.format(app_name, app_full_version, session['id']))
 print()
 
@@ -245,6 +244,9 @@ services_in_error = {}
 configured_services_per_recipient = {}
 
 number_of_services = len(session['services'].items())
+
+print('Check status for {} services...'.format(number_of_services))
+print()
 
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
@@ -367,9 +369,10 @@ except IOError:
 if len(services_in_error.items()):
     print()
     print(pretty_title('Services in Error'))
-          
+    print()      
+    
     for service, reply in services_in_error.items():
-        print('-', service, ': ', reply)
+        print(service, ': ', reply)
     # print(services_in_error)
 
 if debugmode:
@@ -405,6 +408,7 @@ services_in_error1 = dict(services_in_error)
 if len(services_in_error1.keys()) > 0:
     print()
     print(pretty_title('Successive Errors'))
+    print()
     successive_errors = session['config']['notify_when']['successive_errors']
 
     if debugmode:
@@ -420,7 +424,7 @@ if len(services_in_error1.keys()) > 0:
 if debugmode and len(services_in_error.items()):
     print()
     print(pretty_title('Report'))
-    
+    print()
     for service, reply in services_in_error.items():
         print('-', service, ': ', reply)
 
@@ -439,10 +443,11 @@ if len(messages):
 # SERVICES TMP AND LOG FILES
 ####################################
 print()
-print(pretty_title('Logging'))
+print(pretty_title('Log'))
+print()
 
 services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
-print('Write tmp file... {}'.format(services_tmp_file_path))
+# print('Write tmp file... {}'.format(services_tmp_file_path))
 services_tmp_file_handle = open(services_tmp_file_path, 'w')
 
 services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
@@ -452,6 +457,7 @@ services_log_file_handle = open(services_log_file_path, 'a')
 
 print()
 print(pretty_title('Status'))
+print()
 
 # iterate through all services
 for service, service_config in session['services'].items():
@@ -477,23 +483,7 @@ if len(services_in_error) == 0:
 else:
     global_status = 'ERROR'
 
-print()
 print('******* SERVICES STATUS: {} *******'.format(global_status))
-
-messages = []
-if global_status == "ERROR":
-    # print()
-    for service, status in services_in_error.items():
-        messages.append("- {} {}".format(service, status))
-
-    for message in messages:
-        print(message)
-    #
-    # if config['desktop']['enabled']:
-    #     if config['desktop']['trigger'] == 'ERROR':
-    #         desktop_notify(messages)
-
-print()
 
 ####################################
 # STORE STATUSES
@@ -517,8 +507,6 @@ while i < len(service_tmp_files):
     # print('Removing old tmp file {}...'.format(file_path))
     os.remove(file_path)
     i += 1
-
-print(pretty_title('Notifications'))
 
 changed_services = {}
 # script is ran for the first time (or after reboot)
@@ -565,10 +553,10 @@ else:
             print('Change in service detected... {}'.format(service))
 
 if len(changed_services) == 0:
-    print('No changes, no notifications...')
+    print('No changes since last run...')
 
 ####################################
-# DESKTOP ALERT
+## DESKTOP ALERT
 ####################################
 notify_desktop = False
 if session['config']['desktop']['enabled']:
@@ -586,6 +574,10 @@ if notify_desktop:
 ####################################
 # COMPILE LIST OF EMAIL RECIPIENTS
 ####################################
+print()
+print(pretty_title('Notifications'))
+print()
+
 notify_email = False
 if session['config']['email']['enabled']:
     if len(changed_services) != 0:
@@ -598,7 +590,7 @@ if debugmode:
     if notify_email == True:
         print('Email notification triggered...')
     else:
-        print('Email notification NOT triggered...')
+        print('Email notification not triggered...')
 
 
 changed_service_recipients = []
@@ -719,7 +711,7 @@ if notify_email:
 
     print()
 else:
-    print('No notification e-mails sent...')
+    print('Not sending notifications...')
 
 ####################################
 # REMOVE LOCK FILE
