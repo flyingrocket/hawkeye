@@ -45,7 +45,7 @@ from progress.bar import Bar
 ####################################
 # MAIN VARIABLES
 ####################################
-app_version = "3.0"
+app_version = "2.3"
 app_name = "hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
