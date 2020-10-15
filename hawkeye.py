@@ -46,16 +46,28 @@ from progress.bar import Bar
 # MAIN VARIABLES
 ####################################
 app_version = "2.3"
-app_name = "hawkeye"
+app_name = "Hawkeye"
 app_nickname = app_name + app_version.split('.')[0]
 user_agent = app_name + " " + app_version
 git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
 app_full_version = '{}.{}'.format(app_version, git_hash)
 
+####################################
+# SESSION
+####################################
 session = {}
 session['dir'] = os.path.dirname(__file__)
 session['id'] = str(uuid.uuid4())
-session['hash'] = hashlib.md5('.'.join(sys.argv[1:]).encode('utf-8')).hexdigest()
+
+argument_list_hash = sys.argv[1:]
+# do not hash debugmode
+hash_blacklist = ['-d', '--debug']
+
+for option in hash_blacklist:
+    if option in argument_list_hash:
+        argument_list_hash.remove(option) # remove these options for the hash
+
+session['hash'] = hashlib.md5('.'.join(argument_list_hash).encode('utf-8')).hexdigest()
 
 ####################################
 # CREATE LOCK FILE
@@ -97,7 +109,7 @@ parser.add_argument('-c', '--configfile', help='config json or yaml file', requi
 parser.add_argument('-l', '--logpath', help='log path to store hawkeye statuses', required=False, default='/tmp')
 # flag without arguments
 parser.add_argument('-m', '--monkey', help='monkey mode', required=False, default=False, action='store_true')
-parser.add_argument('-d', '--debugmode', help='debug mode', required=False, default=False, action='store_true')
+parser.add_argument('-d', '--debug', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
 parser.add_argument('-v', '--version', help='version', required=False, action='store_true')
 args = parser.parse_args()
@@ -110,7 +122,7 @@ for file_path in [args.configfile, args.servicesfile]:
 ####################################
 # DEBUGMODE
 ####################################
-if args.debugmode:
+if args.debug:
     debugmode = True
 else:
     debugmode = False
@@ -189,7 +201,11 @@ if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     print("Abort! Desktop trigger must be value warning|change")
     exit(1)
 
-print('{} {} ID {}'.format(app_name, app_full_version, session['id']))
+####################################
+# VERSION
+####################################
+print('Version: {} {}'.format(app_name, app_full_version))
+print('Hash/ID: {} {}'.format(session['hash'], session['id']))
 print()
 
 ####################################
