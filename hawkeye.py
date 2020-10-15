@@ -222,13 +222,6 @@ def desktop_notify(messages):
         # the first one is usually the message.
         print('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
         exit(1)
-        
-####################################
-# INITIATE APPLICATION
-####################################
-print('Version: {} {}'.format(app_name, app_full_version))
-print('Hash/ID: {} {}'.format(session['hash'], session['id']))
-print()
 
 ####################################
 # CREATE LOCK FILE
@@ -244,6 +237,13 @@ else:
     file = open(lockfile, "w")
     # file.write("\n")
     file.close()
+       
+####################################
+# INITIATE APPLICATION
+####################################
+print('Version: {} {}'.format(app_name, app_full_version))
+print('Hash/ID: {} {}'.format(session['hash'], session['id']))
+print()
 
 ####################################
 # ITERATE SERVICES
