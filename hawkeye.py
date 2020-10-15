@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 ####################################
-# LIBRARIES
+# IMPORT LIBRARIES
 ####################################
 # parse cli arguments
 import argparse
@@ -43,6 +43,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 from progress.bar import Bar
 
 ####################################
+# CHANG DIR 
+####################################
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
+
+####################################
 # VERSION
 ####################################
 app_version = "2.3"
@@ -82,7 +89,7 @@ datetime_stamp = str(datetime.datetime.now().strftime(format))
 start_time = time.time()
 
 ####################################
-# PARSE ARGUMENTS
+# PARSE CLI ARGUMENTS
 ####################################
 # check version
 if sys.argv[1]:
@@ -106,20 +113,22 @@ for file_path in [args.configfile, args.servicesfile]:
         print('Abort! Cannot access {}!'.format(file_path))
         exit(1)
 
+####################################
+# DEBUGGING
+####################################
+monkey = False
+
 # debugmode
 if args.debug:
     debugmode = True
+    # randomize values when in debug
+    if args.monkey:
+        monkey = True
 else:
     debugmode = False
 
-# random values
-if args.monkey:
-    monkey = True
-else:
-    monkey = False
-
 ####################################
-# CONFIGURATION
+# PRE-FLIGHT CHECKS
 ####################################
 cli_params = {}
 cli_params['services'] = args.servicesfile
@@ -154,17 +163,7 @@ for type, file_path in cli_params.items():
         cli_config_tmp[k] = session[type][k]
     session[type] = cli_config_tmp
 
-# delete a random service
-if monkey:
-    services = list(session['services'].keys())
-    random_service =  random.choice(services)
-    print()
-    print('--> Monkey deleted service {} :)'.format(random_service))
-    session['services'].pop(random_service, None)
-
-####################################
-# VALIDATE APP CONFIG
-####################################
+# check if dirs exist!
 for type in ['log', 'tmp']:
     try:
         dir = os.path.expanduser(session['config']["dirs"][type])
@@ -185,7 +184,7 @@ if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     exit(1)
 
 ####################################
-# LIB
+# FUNCTIONS
 ####################################
 def pretty_title(string, type = 'h2'):
     string = ' {} '.format(string)
@@ -239,7 +238,7 @@ else:
     file.close()
        
 ####################################
-# INITIATE APPLICATION
+# KICK-OFF
 ####################################
 print('Version: {} {}'.format(app_name, app_full_version))
 print('Hash/ID: {} {}'.format(session['hash'], session['id']))
@@ -248,6 +247,17 @@ print()
 ####################################
 # ITERATE SERVICES
 ####################################
+# randomize services for debugging
+if monkey:
+    print()
+    print(pretty_title('Monkey'))
+    print() 
+    services = list(session['services'].keys())
+    random_service =  random.choice(services)
+    print()
+    print('--> Monkey deleted service {} :)'.format(random_service))
+    session['services'].pop(random_service, None)
+    
 # urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings()
 
@@ -455,7 +465,7 @@ if len(messages):
         print(m)
 
 ####################################
-# SERVICES TMP AND LOG FILES
+# TMP AND LOG FILES
 ####################################
 print()
 print(pretty_title('Log'))
@@ -594,7 +604,7 @@ if notify_desktop:
     desktop_notify(messages)
 
 ####################################
-# COMPILE LIST OF EMAIL RECIPIENTS
+# COMPILE MAILING LIST 
 ####################################
 print()
 print(pretty_title('Notifications'))
@@ -743,7 +753,7 @@ if os.path.isfile(lockfile):
     os.remove(lockfile)
 
 ####################################
-# TIME THE SCRIPT
+# WRAP UP
 ####################################
 sec = int(round(time.time()-start_time))
 script_time = datetime.timedelta(seconds =sec)
