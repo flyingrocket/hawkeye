@@ -749,7 +749,9 @@ if notify_email:
         body.append(app_hash_line)
         body.append('')
         body.append('Verifying services...')
+        body.append('')
 
+        list_of_services = []
         # iterate all services
         for service in configured_services_per_recipient[recipient]:
             if service in services_in_error.keys():
@@ -761,20 +763,17 @@ if notify_email:
                 newline = ''
 
             # append all services to body
-            body.append(newline + indent + service + " " + service_status_log['new'][service] + newline)
+            list_of_services.append(newline + indent + service + " " + service_status_log['new'][service] + newline)
 
         if errors:
             status = str(errors) + ' SERVICE(S) FAILED!'
         else:
             status = 'SERVICES OK'
 
-        body.sort()
+        list_of_services.sort()
 
-        if debugmode:
-            print('Mail body for {}'.format(recipient))
-            for b in body:
-                print(b)
-            print()
+        for service_line in list_of_services:
+            body.append(service_line)
 
         hostname = socket.gethostname()
         subject = app_name.upper() + ' @' + hostname + ' ' + status
@@ -787,6 +786,8 @@ if notify_email:
     ####################################
     # iterate all mails
     fqdn = socket.getfqdn()
+
+    i=1
     for recipient in mails.keys():
 
         sender = app_name + '@' + fqdn
@@ -804,9 +805,11 @@ if notify_email:
         #message.append('Run ID: {}'.format(session['id']))
 
         if debugmode:
-            print("\n".join(message))
-            print()
-            print('Debugmode, skip sending mail to {}...'.format(recipient))
+            print('------ MAIL {} ------'.format(i))
+            print(' --- ', end='')
+            print("\n --- ".join(message))
+            print('---')
+
         else:
             try:
                 print('Sending mails to server {}...'.format(session['config']['email']['server']))
@@ -828,7 +831,8 @@ if notify_email:
     # close log file
     mail_log_file_handle.close()
 
-    print()
+    i+=1
+
 else:
     print('Not sending notifications...')
 
