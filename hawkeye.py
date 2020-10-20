@@ -29,6 +29,8 @@ import socket
 import sys
 # move files to other dirs
 import shutil
+# to get file age
+import stat
 # time scripts
 import time
 # http requests:
@@ -43,7 +45,136 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 from progress.bar import Bar
 
 ####################################
-# CHANG DIR 
+# CLASSES
+####################################
+class App:
+
+    lockfile = ''
+
+    lockfile_max_age = 3600 # timeout in seconds: 1 hr = 3600 secs
+
+    name = 'hawkeye'
+
+    nickname = '' # will be set in class initiation
+
+    version = '2.4'
+
+    full_version = '' # will be set in class initiation
+
+    def __init__(self, session_hash):
+
+        self.PID = str(os.getpid())
+
+        self.nickname = self.name + self.version.split('.')[0]
+
+        self.lockfile = "/tmp/{}.{}.lock".format(self.nickname, session['hash'])
+
+        git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
+        git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
+        self.full_version = '{}.{}.{}'.format(self.version, git_commits, git_hash)
+
+
+    def file_age_in_seconds(self, pathname):
+        """ Get the age of a file in seconds. """
+        return time.time() - os.stat(pathname)[stat.ST_MTIME]
+
+
+    def check_pid_is_running(self, pid):
+        """ Check For the existence of a unix pid. """
+        try:
+            os.kill(int(pid), 0)
+        except OSError:
+            return False
+        else:
+            return True
+
+    def init_lock(self):
+        """ Check lock file and create if required. """
+        # it exists, check if there is a process running with that ID
+        if os.path.isfile(self.lockfile):
+
+            # check PID in lockfile and check if it is running
+            with open(self.lockfile, 'r') as file:
+                data = file.read().replace('\n', '')
+            lockfile_pid = data.strip()
+
+            if lockfile_pid != '':
+                # print('Pid lockfile:' + lockfile_pid)
+
+                # check if process is still running
+                if self.check_pid_is_running(lockfile_pid):
+                    # check if lockfile is old
+                    lockfile_age = float(self.file_age_in_seconds(self.lockfile))
+                    # print('Age: {}, Max: {}'.format(lockfile_age, self.lockfile_max_age))
+                    if lockfile_age < self.lockfile_max_age:
+                        print('Abort, lock file exists! {}'.format(self.lockfile))
+                        exit(1) # do not call the quit() function. The lock file is there for a purpose!
+
+        # if we got this far, create it
+        file = open(self.lockfile, "w")
+        # print(PID)
+        file.write(self.PID)
+        file.close()
+
+    def remove_lock(self):
+        """ Clean up, remove lock file. """
+        if os.path.isfile(self.lockfile):
+            os.remove(self.lockfile)
+
+    def fail(self, message = ''):
+        """ Fail, exit with non-zero. """
+        if message != '':
+            print(message)
+
+        self.quit(1)
+
+    def quit(self, error_code = 0, remove_lock = True):
+        """ End the application. """
+        if remove_lock:
+            self.remove_lock()
+
+        exit(error_code)
+
+####################################
+# FUNCTIONS
+####################################
+def pretty_title(string, type = 'h2'):
+    string = ' {} '.format(string)
+
+    if type == 'h1':
+        symbol = '$'
+        width = 80
+    elif type == 'h2':
+        symbol = '_'
+        width = 80
+    elif type == 'h3':
+        symbol = '_'
+        width = 60
+
+    return string.center(width, symbol)
+
+# notifications for the desktop
+def desktop_notify(messages):
+
+    print()
+    print('Notify desktop...')
+    # for message in messages:
+        # hyperlink_format = '<a href="{link}">{text}</a>'
+        # print(hyperlink_format.format(link='http://foo/bar', text=message))
+
+    # sudo apt install python3-notify2
+    import notify2
+
+    try:
+        notify2.init(app_name + app_version)
+        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' ERROR', "\n".join(messages))
+        n.show()
+    except Exception as e:
+        # the first one is usually the message.
+        App.fail('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
+
+####################################
+# CHANG DIR
 ####################################
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
@@ -58,7 +189,7 @@ session['id'] = str(uuid.uuid4())
 
 argument_list_hash = sys.argv[1:]
 # do not hash debugmode
-hash_blacklist = ['-d', '--debug']
+hash_blacklist = ['-d', '--debug', '-v', '--version']
 
 for option in hash_blacklist:
     if option in argument_list_hash:
@@ -69,14 +200,12 @@ session['hash'] = hashlib.md5('.'.join(argument_list_hash).encode('utf-8')).hexd
 ####################################
 # VERSION
 ####################################
-app_version = "2.3"
-app_name = "hawkeye"
-app_nickname = app_name + app_version.split('.')[0]
-user_agent = app_name + " " + app_version
+App = App(session['hash'])
 
-git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
-git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
-app_full_version = '{}.{}.{}'.format(app_version, git_commits, git_hash)
+app_version = App.version
+app_name = App.name
+app_nickname = App.nickname
+app_full_version = App.full_version
 
 app_version_line = 'Version: {} {}'.format(app_name, app_full_version)
 app_hash_line = 'Hash/ID: {} {}'.format(session['hash'], session['id'])
@@ -95,11 +224,11 @@ start_time = time.time()
 # PARSE CLI ARGUMENTS
 ####################################
 # check version
-if sys.argv[1]:
+if len(sys.argv) > 1:
     if sys.argv[1] == '-v' or sys.argv[1] == '--version':
         print(app_full_version)
-        exit()
-        
+        App.quit()
+
 parser = argparse.ArgumentParser(description=app_name + app_version)
 parser.add_argument('-s', '--servicesfile', help='services json or yaml file', required=True)
 parser.add_argument('-c', '--configfile', help='config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
@@ -114,8 +243,7 @@ args = parser.parse_args()
 
 for file_path in [args.configfile, args.servicesfile]:
     if not os.path.isfile(file_path) and not os.path.islink(file_path):
-        print('Abort! Cannot access {}!'.format(file_path))
-        exit(1)
+        App.fail('Abort! Cannot access {}!'.format(file_path))
 
 ####################################
 # DEBUGGING
@@ -140,25 +268,21 @@ cli_params['config'] = args.configfile
 
 for type, file_path in cli_params.items():
     if not os.path.isfile(file_path):
-        print('{} file not found!'.format(type))
-        exit(1)
+        App.fail('{} file not found!'.format(type))
 
     with open(file_path) as file:
         if re.search('.+\.json$', file_path):
             try:
                 session[type] = json.load(file)
             except:
-                print('Exception in parsing json file ' + file_path + '!')
-                exit(1)
+                App.fail('Exception in parsing json file ' + file_path + '!')
         elif re.search('.+\.ya?ml$', file_path):
             try:
                 session[type] = yaml.load(file, Loader=yaml.SafeLoader)
             except:
-                print('Exception in parsing yaml file ' + file_path + '!')
-                exit(1)
+                App.fail('Exception in parsing yaml file ' + file_path + '!')
         else:
-            print('{} file not supported!'.format(type))
-            exit(1)
+            App.fail('{} file not supported!'.format(type))
 
     # sort the files
     cli_config_tmp = {}
@@ -172,75 +296,23 @@ for type in ['log', 'tmp']:
     try:
         dir = os.path.expanduser(session['config']["dirs"][type])
     except:
-        print('Abort! Directive dir:{} not set??'.format(type))
-        exit(1)
+        App.fail('Abort! Directive dir:{} not set??'.format(type))
     # use expanduser to deal with a tilda
     if os.path.isdir(dir) != True:
-        print("Abort! {} dir {} not found!".format(type, dir))
-        exit(1)
+        App.fail("Abort! {} dir {} not found!".format(type, dir))
 
 # set the variables
 log_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["log"]))
 tmp_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["tmp"]))
 
 if not session['config']['desktop']['trigger'] in ['warning', 'change']:
-    print("Abort! Desktop trigger must be value warning|change")
-    exit(1)
-
-####################################
-# FUNCTIONS
-####################################
-def pretty_title(string, type = 'h2'):
-    string = ' {} '.format(string)
-
-    if type == 'h1':
-        symbol = '$'
-        width = 80
-    elif type == 'h2':
-        symbol = '_'
-        width = 80
-    elif type == 'h3':
-        symbol = '_'
-        width = 60
-
-    return string.center(width, symbol)
-    
-# notifications for the desktop
-def desktop_notify(messages):
-
-    print()
-    print('Notify desktop...')
-    # for message in messages:
-        # hyperlink_format = '<a href="{link}">{text}</a>'
-        # print(hyperlink_format.format(link='http://foo/bar', text=message))
-
-    # sudo apt install python3-notify2
-    import notify2
-
-    try:
-        notify2.init(app_name + app_version)
-        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' ERROR', "\n".join(messages))
-        n.show()
-    except Exception as e:
-        # the first one is usually the message.
-        print('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
-        exit(1)
+    App.fail("Abort! Desktop trigger must be value warning|change")
 
 ####################################
 # CREATE LOCK FILE
 ####################################
-lockfile = "/tmp/{}.LOCK.{}".format(app_nickname, session['hash'])
+App.init_lock()
 
-# it exists, abort
-if os.path.isfile(lockfile):
-    print('Abort, lock file exists! {}'.format(lockfile))
-    exit(1)
-# create it
-else:
-    file = open(lockfile, "w")
-    # file.write("\n")
-    file.close()
-       
 ####################################
 # KICK-OFF
 ####################################
@@ -255,13 +327,13 @@ print()
 if monkey:
     print()
     print(pretty_title('Monkey'))
-    print() 
+    print()
     services = list(session['services'].keys())
     random_service =  random.choice(services)
     print()
     print('--> Monkey deleted service {} :)'.format(random_service))
     session['services'].pop(random_service, None)
-    
+
 # urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings()
 
@@ -292,8 +364,7 @@ for service, service_config in session['services'].items():
             # print('Connectivity check. Try {}... '.format(domain))
             resolved = socket.gethostbyname(domain)
         except OSError as e:
-            print('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
-            exit(1)
+            App.fail('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
 
     # initiate status
     service_status = False
@@ -329,6 +400,8 @@ for service, service_config in session['services'].items():
 
     # check the response
     try:
+        user_agent = app_name + " " + app_version
+
         r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']), headers ={
             'User-Agent': user_agent
             }
@@ -397,8 +470,8 @@ except IOError:
 if len(services_in_error.items()):
     print()
     print(pretty_title('Services In Error'))
-    print()      
-    
+    print()
+
     for service, reply in services_in_error.items():
         print(service.ljust(60, '.'), reply)
     # print(services_in_error)
@@ -437,7 +510,7 @@ if len(services_in_error1.keys()) > 0:
     print()
     #print(pretty_title('Successive Errors'))
     print('Successive Errors:')
-    #print()  
+    #print()
     successive_errors = session['config']['notify_when']['successive_errors']
 
     #if debugmode:
@@ -608,7 +681,7 @@ if notify_desktop:
     desktop_notify(messages)
 
 ####################################
-# COMPILE MAILING LIST 
+# COMPILE MAILING LIST
 ####################################
 print()
 print(pretty_title('Notifications'))
@@ -619,7 +692,7 @@ notify_email = False
 # allow a quiet cli run
 if args.quiet:
     print('Quiet mode is set...')
-else:    
+else:
     if session['config']['email']['enabled']:
         if len(changed_services) != 0:
             if global_status == 'OK' and session['config']['notify_when']['services_ok'] != True:
@@ -628,11 +701,11 @@ else:
                 notify_email = True
 
 if debugmode:
-    print()
-    print('Changed services...')
-    print(changed_services)
-    print('Notify following recipients...')
-    print(changed_service_recipients)
+    if len(changed_services) != 0:
+        print(pretty_title('Changed Services', 'h3'))
+        print()
+        print(changed_services)
+        print()
 
 # send messages
 if notify_email:
@@ -640,9 +713,9 @@ if notify_email:
         print('Send notifcations (simulated)...')
     else:
         print('Send notifications (e-mail)...')
-        
+
     print()
-    
+
     changed_service_recipients = []
     # check all services per recipent for changes
     for recipient, services in configured_services_per_recipient.items():
@@ -653,11 +726,14 @@ if notify_email:
                 if not recipient in changed_service_recipients:
                     changed_service_recipients.append(recipient)
                     break
-    
+
     if debugmode:
-        print(changed_service_recipients)
-        print()
-    
+        if len(changed_service_recipients) != 0:
+            print(pretty_title('Notify Recipients', 'h3'))
+            print()
+            print(changed_service_recipients)
+            print()
+
     # log mails - purely for debugging
     mail_log_file_path = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
     print('Write mail log file... {}'.format(mail_log_file_path ))
@@ -673,12 +749,12 @@ if notify_email:
         mails[recipient] = {}
         errors = 0
         body = []
-        
+
         body.append(app_version_line)
         body.append(app_hash_line)
         body.append('')
         body.append('Verifying services...')
-        
+
         # iterate all services
         for service in configured_services_per_recipient[recipient]:
             if service in services_in_error.keys():
@@ -745,10 +821,9 @@ if notify_email:
                 print("Successfully sent email to " + recipient + "...")
             except:
                 print()
-                print("Abort! Unable to send email...")
                 mail_log_file_handle.write('ERROR sending mail to {}'.format(recipient))
-                exit(1)
-            
+                App.fail("Abort! Unable to send email...")
+
         # log
         for line in message:
             mail_log_file_handle.write(line)
@@ -766,8 +841,7 @@ else:
 # REMOVE LOCK FILE
 ####################################
 # remove the lock file
-if os.path.isfile(lockfile):
-    os.remove(lockfile)
+App.remove_lock()
 
 ####################################
 # WRAP UP
