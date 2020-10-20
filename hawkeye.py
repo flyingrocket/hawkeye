@@ -55,8 +55,6 @@ class App:
 
     name = 'hawkeye'
 
-    nickname = '' # will be set in class initiation
-
     version = '2.4'
 
     full_version = '' # will be set in class initiation
@@ -65,9 +63,7 @@ class App:
 
         self.PID = str(os.getpid())
 
-        self.nickname = self.name + self.version.split('.')[0]
-
-        self.lockfile = "/tmp/{}.{}.lock".format(self.nickname, session['hash'])
+        self.lockfile = "/tmp/{}.{}.lock".format(self.name, session['hash'])
 
         git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
         git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
@@ -204,7 +200,6 @@ App = App(session['hash'])
 
 app_version = App.version
 app_name = App.name
-app_nickname = App.nickname
 app_full_version = App.full_version
 
 app_version_line = 'Version: {} {}'.format(app_name, app_full_version)
@@ -447,7 +442,7 @@ bar.finish()
 ####################################
 # SERVICE HISTORY
 ####################################
-history_tmp_file = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.history')
+history_tmp_file = os.path.join(args.logpath, app_name + '.' + session['hash'] + '.history')
 
 try:
     with open(history_tmp_file) as file:
@@ -548,11 +543,11 @@ print()
 print(pretty_title('Log'))
 print()
 
-services_tmp_file_path = os.path.join(tmp_dir, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
+services_tmp_file_path = os.path.join(tmp_dir, app_name + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
 # print('Write tmp file... {}'.format(services_tmp_file_path))
 services_tmp_file_handle = open(services_tmp_file_path, 'w')
 
-services_log_file_path = os.path.join(log_dir, app_nickname + '.' + date_stamp + '.services.log')
+services_log_file_path = os.path.join(log_dir, app_name + '.' + date_stamp + '.services.log')
 # status_log_file_path = os.path.join(log_dir, script_name + '.status.log')
 print('Write log file... {}'.format(services_log_file_path))
 print()
@@ -603,7 +598,7 @@ tmp_files_listing = os.listdir(tmp_dir)
 # add all the service tmp files to a list
 service_tmp_files = []
 for file in tmp_files_listing:
-    if re.search(app_nickname + '.' + session['hash'] + '.+\.services\.tmp$', file):
+    if re.search(app_name + '.' + session['hash'] + '.+\.services\.tmp$', file):
         service_tmp_files.append(file)
 
 # reverse sort to keep latest files
@@ -735,7 +730,7 @@ if notify_email:
             print()
 
     # log mails - purely for debugging
-    mail_log_file_path = os.path.join(args.logpath, app_nickname + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
+    mail_log_file_path = os.path.join(args.logpath, app_name + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.mail.log')
     print('Write mail log file... {}'.format(mail_log_file_path ))
     mail_log_file_handle = open(mail_log_file_path, 'a')
     print()
@@ -782,7 +777,7 @@ if notify_email:
             print()
 
         hostname = socket.gethostname()
-        subject = app_nickname.upper() + ' @' + hostname + ' ' + status
+        subject = app_name.upper() + ' @' + hostname + ' ' + status
 
         mails[recipient]['subject'] = subject
         mails[recipient]['body'] = body
@@ -794,7 +789,7 @@ if notify_email:
     fqdn = socket.getfqdn()
     for recipient in mails.keys():
 
-        sender = app_nickname + '@' + fqdn
+        sender = app_name + '@' + fqdn
 
         message = []
         message.append('From: <' + sender + '>')
