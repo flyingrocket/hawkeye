@@ -346,6 +346,7 @@ print()
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
+responses = {}
 messages=[]
 connectivity_checked = False
 # request the urls
@@ -401,8 +402,12 @@ for service, service_config in session['services'].items():
             'User-Agent': user_agent
             }
             )
+        responses[service] = r.status
     except Exception as e:
         services_in_error[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
+        responses[service] = 'XXX'
+        continue
+        
 
     if service not in services_in_error.keys():
         # add to error list if response does not match
@@ -537,6 +542,17 @@ if len(messages):
         print(m)
 
 ####################################
+# Responses
+####################################
+print()
+print(pretty_title('Response Codes'))
+print()
+
+#print(responses) 
+for service, response in responses.items():
+    print(service.ljust(60, '.'), response)
+
+####################################
 # TMP AND LOG FILES
 ####################################
 print()
@@ -557,7 +573,7 @@ for service, service_config in session['services'].items():
     if service in services_in_error.keys():
         print(service.ljust(60, '.'), 'FAIL')
     else:
-        print(service.ljust(60, '.'), 'OK')
+        print(service.ljust(60, '.'), 'PASS')
 
 print()
 print(pretty_title('Status'))
