@@ -506,7 +506,7 @@ if debugmode:
     print(history_list)
 
 # -----------------------------------------------
-# Successive failure logiic
+# Successive failure logic
 # -----------------------------------------------
 # make a copy of the failed services
 services_failed1 = dict(services_failed)
