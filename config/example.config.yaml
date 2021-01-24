@@ -31,9 +31,9 @@ notify:
 # notification options
 notify_when:
   # get a notification when services are ok?
-  services_ok: false # do not send an email when services are restored
+  services_passed: false # do not send an email when services are restored
   # get an error when services fail X amount of consecutive times
-  successive_errors: 1 # 1 will trigger a notification on the first time an error occurs
+  successive_failures: 1 # 1 will trigger a notification on the first time a faiilure occurs
 # some values while doing the request. install package: python3-urllib3
 request:
   timeout: 15

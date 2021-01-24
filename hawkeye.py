@@ -163,7 +163,7 @@ def desktop_notify(messages):
 
     try:
         notify2.init(app_name + app_version)
-        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' ERROR', "\n".join(messages))
+        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' FAIL', "\n".join(messages))
         n.show()
     except Exception as e:
         # the first one is usually the message.
@@ -335,7 +335,7 @@ urllib3.disable_warnings()
 # create the http object
 http = urllib3.PoolManager(maxsize=100, block=True)
 
-services_in_error = {}
+services_failed = {}
 configured_services_per_recipient = {}
 
 number_of_services = len(session['services'].items())
@@ -404,15 +404,13 @@ for service, service_config in session['services'].items():
             )
         responses[service] = r.status
     except Exception as e:
-        services_in_error[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
-        responses[service] = 'XXX'
-        continue
-        
+        services_failed[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
+        responses[service] = '***'      
 
-    if service not in services_in_error.keys():
-        # add to error list if response does not match
+    if service not in services_failed.keys():
+        # add to failure list if response does not match
         if r.status != status_expected:
-            services_in_error[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(status_expected), response_codes[int(status_expected)][0], str(r.status), response_codes[int(r.status)][0])
+            services_failed[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(status_expected), response_codes[int(status_expected)][0], str(r.status), response_codes[int(r.status)][0])
         # setup expected hash
         elif 'hash' in service_config:
             # $ wget https://some.url, $ cat index.html | md5sum
@@ -422,7 +420,7 @@ for service, service_config in session['services'].items():
             md5_hash = hashlib.md5(text_utf8)
             hash_calculated = md5_hash.hexdigest()
             if hash_calculated != hash_expected:
-                services_in_error[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
+                services_failed[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
     # build an array of all recipients and their services
     if session['config']['email']['enabled']:
@@ -467,23 +465,23 @@ except IOError:
 #     print('read from file')
 #     with open(history_tmp_file) as file:
 #         history_list = yaml.load(file, Loader=yaml.FullLoader)
-if len(services_in_error.items()):
+if len(services_failed.items()):
     print()
-    print(pretty_title('Services In Error'))
+    print(pretty_title('Failed Services'))
     print()
 
-    for service, reply in services_in_error.items():
+    for service, reply in services_failed.items():
         print(service.ljust(60, '.'), reply)
-    # print(services_in_error)
+    # print(services_failed)
 
 if debugmode:
     print()
     print('Old service history:')
     print(history_list)
 
-# keep sucessive errors
+# keep sucessive failures
 for service, service_config in session['services'].items():
-    if service in services_in_error.keys():
+    if service in services_failed.keys():
         if service in history_list:
             history_list[service] += 1
         else:
@@ -493,42 +491,30 @@ for service, service_config in session['services'].items():
 
 file = open(history_tmp_file, 'w+')
 history_dumped = yaml.dump(history_list, file)
-# print('Services in error')
-# print(services_in_error.keys())
+# print('Failed ervices')
+# print(services_failed.keys())
 #
-# if len(services_in_error.keys()):
-#     print('yes, there are services in error')
+# if len(services_failed.keys()):
+#     print('yes, there are failed services')
 
 if debugmode:
     print('New service history:')
     print(history_list)
 
-# make a copy of the services in error
-services_in_error1 = dict(services_in_error)
+# make a copy of the failed services
+services_failed1 = dict(services_failed)
 
-if len(services_in_error1.keys()) > 0:
+if len(services_failed1.keys()) > 0:
     print()
-    #print(pretty_title('Successive Errors'))
-    print('Successive Errors:')
+    print('Successive faiures:')
     #print()
-    successive_errors = session['config']['notify_when']['successive_errors']
+    successive_failures = session['config']['notify_when']['successive_failures']
 
-    #if debugmode:
-        #print('Successive errors:', successive_errors)
-        #print()
-
-    for service in services_in_error1.keys():
+    for service in services_failed1.keys():
         print(service.ljust(60, '.'), history_list[service])
-        if history_list[service] < successive_errors:
-            del services_in_error[service]
-            print('*** WARNING *** This error ({}) did not reach threshold ({}). Removing notification...'.format(history_list[service], successive_errors))
-
-#if debugmode and len(services_in_error.items()):
-    #print()
-    #print(pretty_title('Services In Error'))
-    #print()
-    #for service, reply in services_in_error.items():
-        #print('-', service, ': ', reply)
+        if history_list[service] < successive_failures:
+            del services_failed[service]
+            print('*** WARNING *** This failure ({}) did not reach threshold ({}). Removing notification...'.format(history_list[service], successive_failures))
 
 if debugmode:
     print()
@@ -570,7 +556,7 @@ print()
 services_log_file_handle = open(services_log_file_path, 'a')
 
 for service, service_config in session['services'].items():
-    if service in services_in_error.keys():
+    if service in services_failed.keys():
         print(service.ljust(60, '.'), 'FAIL')
     else:
         print(service.ljust(60, '.'), 'PASS')
@@ -581,10 +567,10 @@ print()
 
 # iterate through all services
 for service, service_config in session['services'].items():
-    if service in services_in_error:
-        new_status = services_in_error[service]
+    if service in services_failed:
+        new_status = services_failed[service]
     else:
-        new_status = 'OK'
+        new_status = 'PASS'
 
     line = datetime_stamp + ';' + session['id'] + ';' + service + ';' + new_status + "\n"
     services_tmp_file_handle.write(line)
@@ -598,10 +584,10 @@ services_log_file_handle.close()
 # STATUS LOG FILE
 ####################################
 # print final status
-if len(services_in_error) == 0:
-    global_status = 'OK'
+if len(services_failed) == 0:
+    global_status = 'PASS'
 else:
-    global_status = 'ERROR'
+    global_status = 'FAIL'
 
 print('Global Status'.ljust(60, '.'), global_status)
 
@@ -685,7 +671,7 @@ if session['config']['desktop']['enabled']:
             notify_desktop = True
     # contiuous notifications
     else:
-        if global_status == 'ERROR':
+        if global_status == 'FAIL':
             notify_desktop = True
 
 if notify_desktop:
@@ -706,7 +692,7 @@ if args.quiet:
 else:
     if session['config']['email']['enabled']:
         if len(changed_services) != 0:
-            if global_status == 'OK' and session['config']['notify_when']['services_ok'] != True:
+            if global_status == 'PASS' and session['config']['notify_when']['services_passed'] != True:
                 notify_email = False
             else:
                 notify_email = True
@@ -758,7 +744,7 @@ if notify_email:
     for recipient in changed_service_recipients:
         # setup mail variables
         mails[recipient] = {}
-        errors = 0
+        failures = 0
         body = []
 
         body.append(app_version_line)
@@ -770,8 +756,8 @@ if notify_email:
         list_of_services = []
         # iterate all services
         for service in configured_services_per_recipient[recipient]:
-            if service in services_in_error.keys():
-                errors += 1
+            if service in services_failed.keys():
+                failures += 1
                 indent = "*** fail *** "
                 newline = '' # '"\n"
             else:
@@ -781,10 +767,10 @@ if notify_email:
             # append all services to body
             list_of_services.append(newline + indent + service + " " + service_status_log['new'][service] + newline)
 
-        if errors:
-            status = str(errors) + ' SERVICE(S) FAILED!'
+        if failures:
+            status = str(failures) + ' SERVICE(S) FAILED!'
         else:
-            status = 'SERVICES OK'
+            status = 'SERVICES PASSED'
 
         list_of_services.sort()
 
@@ -835,7 +821,7 @@ if notify_email:
                 print("Successfully sent email to " + recipient + "...")
             except:
                 print()
-                mail_log_file_handle.write('ERROR sending mail to {}'.format(recipient))
+                mail_log_file_handle.write('Error sending mail to {}'.format(recipient))
                 App.fail("Abort! Unable to send email...")
 
         # log

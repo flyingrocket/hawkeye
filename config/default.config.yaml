@@ -12,8 +12,8 @@ dirs:
   tmp: "/tmp"
 notify: []
 notify_when:
-  services_ok: true
-  successive_errors: 1
+  services_passed: true
+  successive_failures: 1
 request:
   timeout: 15
   retries: 3
