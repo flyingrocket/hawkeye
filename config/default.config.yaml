@@ -17,3 +17,4 @@ notify_when:
 request:
   timeout: 15
   retries: 3
+  redirect: true

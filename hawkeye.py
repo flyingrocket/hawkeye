@@ -346,9 +346,17 @@ print()
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
+
+default_request_params = {}
+default_request_params['redirect'] = True
+default_request_params['timeout'] = 15
+default_request_params['retries'] = 3
+
 messages=[]
 responses = {}
 rules = {}
+request_params = {}
+
 connectivity_checked = False
 # request the urls
 for service, service_config in session['services'].items():
@@ -391,21 +399,25 @@ for service, service_config in session['services'].items():
         if random.randint(0, 1) == 1:
             status_expected = random.choice(list(response_codes.keys()))
 
-    # allow redirect by default
-    allow_redirect = True
+    for directive in ['redirect', 'timeout', 'retries']:
 
-    # redirect
-    if 'redirect' in service_config:
-        if service_config['redirect'] is False:
-            allow_redirect = False
-            
-    rules[service].append('redirect=' + str(allow_redirect))
+        # set global directove as default
+        if directive in session['config']['request'].keys():
+            request_params[directive] = session['config']['request'][directive]
+        else:
+            request_params[directive] = default_request_params[directive]
+
+        # override per service
+        if directive in service_config:
+            request_params[directive] = service_config[directive]
+                
+    rules[service].append('redirect=' + str(request_params['redirect']))
 
     # check the response
     try:
         user_agent = app_name + " " + app_version
 
-        r = http.request('GET', service, redirect=allow_redirect, timeout=float(session['config']['request']['timeout']), retries=int(session['config']['request']['retries']), headers ={
+        r = http.request('GET', service, redirect=request_params['redirect'], timeout=float(request_params['timeout']), retries=int(request_params['redirect']), headers ={
             'User-Agent': user_agent
             }
             )
@@ -454,7 +466,7 @@ bar.finish()
 # Responses
 ####################################
 print()
-print(pretty_title('Response Codes'))
+print(pretty_title('Service Response'))
 print()
 
 #print(responses) 

@@ -22,3 +22,7 @@
   # tag: "<tag>"
   # do not follow a redirect of the page
   redirect: false
+  # override default timeout
+  timeout: 20
+  # override default retries
+  retries: 2
