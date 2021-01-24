@@ -346,11 +346,14 @@ print()
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
-responses = {}
 messages=[]
+responses = {}
+rules = {}
 connectivity_checked = False
 # request the urls
 for service, service_config in session['services'].items():
+    
+    rules[service] = []
 
     # check connectivity
     if not connectivity_checked:
@@ -377,6 +380,8 @@ for service, service_config in session['services'].items():
         status_expected = service_config['status']
     else:
         status_expected = 200
+        
+    rules[service].append('status=' + str(status_expected))
 
     # get a list of all http response codes
     response_codes = requests.status_codes._codes
@@ -393,6 +398,8 @@ for service, service_config in session['services'].items():
     if 'redirect' in service_config:
         if service_config['redirect'] is False:
             allow_redirect = False
+            
+    rules[service].append('redirect=' + str(allow_redirect))
 
     # check the response
     try:
@@ -442,6 +449,29 @@ for service, service_config in session['services'].items():
     bar.next()
 bar.finish()
 
+
+####################################
+# Responses
+####################################
+print()
+print(pretty_title('Response Codes'))
+print()
+
+#print(responses) 
+for service, response in responses.items():
+    print(service.ljust(60, '.'), response)
+    
+####################################
+# Rules
+####################################
+print()
+print(pretty_title('Service Rules'))
+print()
+
+#print(responses) 
+for service, rules in rules.items():
+    print(service.ljust(60, '.'), ','.join(rules))
+    
 ####################################
 # SERVICE HISTORY
 ####################################
@@ -526,17 +556,6 @@ if len(messages):
     print()
     for m in messages:
         print(m)
-
-####################################
-# Responses
-####################################
-print()
-print(pretty_title('Response Codes'))
-print()
-
-#print(responses) 
-for service, response in responses.items():
-    print(service.ljust(60, '.'), response)
 
 ####################################
 # TMP AND LOG FILES
