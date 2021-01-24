@@ -1,8 +1,8 @@
 #! /usr/bin/env python3
 
-####################################
-# IMPORT LIBRARIES
-####################################
+#################################################
+# Import libraries
+#################################################
 # parse cli arguments
 import argparse
 # caclulate a md5sum
@@ -39,150 +39,42 @@ import urllib3
 # yaml supprt
 import yaml
 
+#################################################
+# Import 3d party libs
+#################################################
 # include 3d party libraries: add the lib/ dir to the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
 # progress bar
 from progress.bar import Bar
 
-####################################
-# CLASSES
-####################################
-class App:
+#################################################
+# Import classes and functions
+#################################################
+# main app class
+from classes.App import App
 
-    lockfile = ''
-
-    lockfile_max_age = 3600 # timeout in seconds: 1 hr = 3600 secs
-
-    name = 'hawkeye'
-
-    version = '2.4'
-
-    full_version = '' # will be set in class initiation
-
-    def __init__(self, session_hash):
-
-        self.PID = str(os.getpid())
-
-        self.lockfile = "/tmp/{}.{}.lock".format(self.name, session['hash'])
-
-        git_commits = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-list HEAD | wc -l 2>/dev/null;').read().rstrip()
-        git_hash = os.popen('cd ' + os.path.dirname(os.path.abspath(__file__)) + '; git rev-parse --short HEAD 2>/dev/null;').read().rstrip()
-        self.full_version = '{}.{}.{}'.format(self.version, git_commits, git_hash)
+# functions
+from functions.DesktopNotify import desktop_notify
+from functions.PrettyTitle import pretty_title
 
 
-    def file_age_in_seconds(self, pathname):
-        """ Get the age of a file in seconds. """
-        return time.time() - os.stat(pathname)[stat.ST_MTIME]
-
-
-    def check_pid_is_running(self, pid):
-        """ Check For the existence of a unix pid. """
-        try:
-            os.kill(int(pid), 0)
-        except OSError:
-            return False
-        else:
-            return True
-
-    def init_lock(self):
-        """ Check lock file and create if required. """
-        # it exists, check if there is a process running with that ID
-        if os.path.isfile(self.lockfile):
-
-            # check PID in lockfile and check if it is running
-            with open(self.lockfile, 'r') as file:
-                data = file.read().replace('\n', '')
-            lockfile_pid = data.strip()
-
-            if lockfile_pid != '':
-                # print('Pid lockfile:' + lockfile_pid)
-
-                # check if process is still running
-                if self.check_pid_is_running(lockfile_pid):
-                    # check if lockfile is old
-                    lockfile_age = float(self.file_age_in_seconds(self.lockfile))
-                    # print('Age: {}, Max: {}'.format(lockfile_age, self.lockfile_max_age))
-                    if lockfile_age < self.lockfile_max_age:
-                        print('Abort, lock file exists! {}'.format(self.lockfile))
-                        exit(1) # do not call the quit() function. The lock file is there for a purpose!
-
-        # if we got this far, create it
-        file = open(self.lockfile, "w")
-        # print(PID)
-        file.write(self.PID)
-        file.close()
-
-    def remove_lock(self):
-        """ Clean up, remove lock file. """
-        if os.path.isfile(self.lockfile):
-            os.remove(self.lockfile)
-
-    def fail(self, message = ''):
-        """ Fail, exit with non-zero. """
-        if message != '':
-            print(message)
-
-        self.quit(1)
-
-    def quit(self, error_code = 0, remove_lock = True):
-        """ End the application. """
-        if remove_lock:
-            self.remove_lock()
-
-        exit(error_code)
-
-####################################
-# FUNCTIONS
-####################################
-def pretty_title(string, type = 'h2'):
-    string = ' {} '.format(string)
-
-    if type == 'h1':
-        symbol = '$'
-        width = 80
-    elif type == 'h2':
-        symbol = '_'
-        width = 80
-    elif type == 'h3':
-        symbol = '_'
-        width = 60
-
-    return string.center(width, symbol)
-
-# notifications for the desktop
-def desktop_notify(messages):
-
-    print()
-    print('Notify desktop...')
-    # for message in messages:
-        # hyperlink_format = '<a href="{link}">{text}</a>'
-        # print(hyperlink_format.format(link='http://foo/bar', text=message))
-
-    # sudo apt install python3-notify2
-    import notify2
-
-    try:
-        notify2.init(app_name + app_version)
-        n = notify2.Notification(app_name.capitalize() + ' ' + app_version + ' FAIL', "\n".join(messages))
-        n.show()
-    except Exception as e:
-        # the first one is usually the message.
-        App.fail('Could not notify desktop. Package python3-notify2 installed? {}'.format(e.args[1]))
-
-####################################
-# CHANG DIR
-####################################
+#################################################
+# Script context
+#################################################
 abspath = os.path.abspath(__file__)
 dname = os.path.dirname(abspath)
 os.chdir(dname)
 
-####################################
-# SESSION
-####################################
+#################################################
+# Build session
+#################################################
 session = {}
 session['dir'] = os.path.dirname(__file__)
 session['id'] = str(uuid.uuid4())
 
+#################################################
+# Create session hash
+#################################################
 argument_list_hash = sys.argv[1:]
 # do not hash debugmode
 hash_blacklist = ['-d', '--debug', '-v', '--version']
@@ -193,9 +85,9 @@ for option in hash_blacklist:
 
 session['hash'] = hashlib.md5('.'.join(argument_list_hash).encode('utf-8')).hexdigest()
 
-####################################
-# VERSION
-####################################
+#################################################
+# App version
+#################################################
 App = App(session['hash'])
 
 app_version = App.version
@@ -205,9 +97,9 @@ app_full_version = App.full_version
 app_version_line = 'Version: {} {}'.format(app_name, app_full_version)
 app_hash_line = 'Hash/ID: {} {}'.format(session['hash'], session['id'])
 
-####################################
-# DATE AND TIME
-####################################
+#################################################
+# Time script
+#################################################
 date_stamp = str(datetime.datetime.now().date())
 format = '%Y-%m-%d_%H%M%S'
 datetime_stamp = str(datetime.datetime.now().strftime(format))
@@ -215,20 +107,29 @@ datetime_stamp = str(datetime.datetime.now().strftime(format))
 # time the script
 start_time = time.time()
 
-####################################
-# PARSE CLI ARGUMENTS
-####################################
+#################################################
+# Parse cli arguments
+#################################################
 # check version
 if len(sys.argv) > 1:
     if sys.argv[1] == '-v' or sys.argv[1] == '--version':
         print(app_full_version)
         App.quit()
 
+# -----------------------------------------------
+# Arguments
+# -----------------------------------------------
 parser = argparse.ArgumentParser(description=app_name + app_version)
+# all the services 
 parser.add_argument('-s', '--servicesfile', help='services json or yaml file', required=True)
+# main config, set to default if not specified
 parser.add_argument('-c', '--configfile', help='config json or yaml file', required=False, default=os.path.join(session['dir'], 'config/default.config.yaml'))
+# log path
 parser.add_argument('-l', '--logpath', help='log path to store hawkeye statuses', required=False, default='/tmp')
-# flag without arguments
+
+# -----------------------------------------------
+# Flags
+# -----------------------------------------------
 parser.add_argument('-m', '--monkey', help='monkey mode', required=False, default=False, action='store_true')
 parser.add_argument('-d', '--debug', help='debug mode', required=False, default=False, action='store_true')
 parser.add_argument('-t', '--tag', help='tag, e.g. server name', required=False, default=False)
@@ -236,13 +137,9 @@ parser.add_argument('-v', '--version', help='version', required=False, action='s
 parser.add_argument('--quiet', help='Do not send e-mails', required=False, default=False, action='store_true')
 args = parser.parse_args()
 
-for file_path in [args.configfile, args.servicesfile]:
-    if not os.path.isfile(file_path) and not os.path.islink(file_path):
-        App.fail('Abort! Cannot access {}!'.format(file_path))
-
-####################################
-# DEBUGGING
-####################################
+#################################################
+# Debug
+#################################################
 monkey = False
 
 # debugmode
@@ -254,13 +151,25 @@ if args.debug:
 else:
     debugmode = False
 
-####################################
-# PRE-FLIGHT CHECKS
-####################################
+#################################################
+# Pre-flight checks
+#################################################
+
+# -----------------------------------------------
+# Check if config files exist
+# -----------------------------------------------
+for file_path in [args.configfile, args.servicesfile]:
+    if not os.path.isfile(file_path) and not os.path.islink(file_path):
+        App.fail('Abort! Cannot access {}!'.format(file_path))
+
+
 cli_params = {}
 cli_params['services'] = args.servicesfile
 cli_params['config'] = args.configfile
 
+# -----------------------------------------------
+# Validate config file format
+# -----------------------------------------------
 for type, file_path in cli_params.items():
     if not os.path.isfile(file_path):
         App.fail('{} file not found!'.format(type))
@@ -286,6 +195,9 @@ for type, file_path in cli_params.items():
         cli_config_tmp[k] = session[type][k]
     session[type] = cli_config_tmp
 
+# -----------------------------------------------
+# Check if dir exist
+# -----------------------------------------------
 # check if dirs exist!
 for type in ['log', 'tmp']:
     try:
@@ -300,24 +212,29 @@ for type in ['log', 'tmp']:
 log_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["log"]))
 tmp_dir = os.path.normpath(os.path.expanduser(session['config']["dirs"]["tmp"]))
 
+# -----------------------------------------------
+# Validate trigger
+# -----------------------------------------------
 if not session['config']['desktop']['trigger'] in ['warning', 'change']:
     App.fail("Abort! Desktop trigger must be value warning|change")
 
-####################################
-# CREATE LOCK FILE
-####################################
+#################################################
+# Kick-off
+#################################################
 App.init_lock()
 
-####################################
-# KICK-OFF
-####################################
+# app version
 print(app_version_line)
 print(app_hash_line)
 print()
 
-####################################
-# ITERATE SERVICES
-####################################
+#################################################
+# Iterate services
+#################################################
+
+# -----------------------------------------------
+# Debug
+# -----------------------------------------------
 # randomize services for debugging
 if monkey:
     print()
@@ -329,6 +246,9 @@ if monkey:
     print('--> Monkey deleted service {} :)'.format(random_service))
     session['services'].pop(random_service, None)
 
+# -----------------------------------------------
+# Use urllib3 lib
+# -----------------------------------------------
 # urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 urllib3.disable_warnings()
 
@@ -340,17 +260,20 @@ configured_services_per_recipient = {}
 
 number_of_services = len(session['services'].items())
 
+# -----------------------------------------------
+# Prepare, set defaults
+# -----------------------------------------------
 print('Check status for {} services...'.format(number_of_services))
 print()
 
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
-
 default_request_params = {}
 default_request_params['redirect'] = True
 default_request_params['timeout'] = 15
 default_request_params['retries'] = 3
+default_request_params['status'] = 200
 
 messages=[]
 responses = {}
@@ -358,11 +281,25 @@ rules = {}
 request_params = {}
 
 connectivity_checked = False
+
+# -----------------------------------------------
+# Loop through services
+# -----------------------------------------------
 # request the urls
 for service, service_config in session['services'].items():
     
+    # rules per service
     rules[service] = []
 
+    # initiate status
+    service_status = False
+
+    # get a list of all http response codes
+    response_codes = requests.status_codes._codes
+
+    # -----------------------------------------------
+    # Check for network
+    # -----------------------------------------------
     # check connectivity
     if not connectivity_checked:
         connectivity_checked = True
@@ -373,33 +310,29 @@ for service, service_config in session['services'].items():
         except OSError as e:
             App.fail('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
 
-    # initiate status
-    service_status = False
-
+    # -----------------------------------------------
+    # Match tags
+    # -----------------------------------------------
     # skip if tags do not match
     if args.tag and 'tag' in service_config:
         if args.tag != service_config['tag']:
             messages.append('Skipped ' + service + ' (tagged "' + service_config['tag'] + '")...')
             bar.next()
             continue
-
-    # setup expected status
-    if 'status' in service_config:
-        status_expected = service_config['status']
-    else:
-        status_expected = 200
-        
-    rules[service].append('status=' + str(status_expected))
-
-    # get a list of all http response codes
-    response_codes = requests.status_codes._codes
-
+    
+    # -----------------------------------------------
+    # Debug
+    # -----------------------------------------------
     if monkey:
         # randomly change a service
         if random.randint(0, 1) == 1:
-            status_expected = random.choice(list(response_codes.keys()))
+            request_params['status'] = random.choice(list(response_codes.keys()))
 
-    for directive in ['redirect', 'timeout', 'retries']:
+
+    # -----------------------------------------------
+    # Override global directives
+    # -----------------------------------------------
+    for directive in ['redirect', 'timeout', 'retries', 'status']:
 
         # set global directove as default
         if directive in session['config']['request'].keys():
@@ -411,8 +344,12 @@ for service, service_config in session['services'].items():
         if directive in service_config:
             request_params[directive] = service_config[directive]
                 
+    rules[service].append('status=' + str(request_params['status']))
     rules[service].append('redirect=' + str(request_params['redirect']))
 
+    # -----------------------------------------------
+    # Make the request
+    # -----------------------------------------------
     # check the response
     try:
         user_agent = app_name + " " + app_version
@@ -426,11 +363,14 @@ for service, service_config in session['services'].items():
         services_failed[service] = 'FAILED CONNECTION'# + str(e) # do not use the error message, it causes problems trying to parse the file!
         responses[service] = '***'      
 
+    # -----------------------------------------------
+    # Validate response 
+    # -----------------------------------------------
     if service not in services_failed.keys():
         # add to failure list if response does not match
-        if r.status != status_expected:
-            services_failed[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(status_expected), response_codes[int(status_expected)][0], str(r.status), response_codes[int(r.status)][0])
-        # setup expected hash
+        if r.status != request_params['status']:
+            services_failed[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(request_params['status']), response_codes[int(request_params['status'])][0], str(r.status), response_codes[int(r.status)][0])
+        # extra check: check if hash matches expected hash
         elif 'hash' in service_config:
             # $ wget https://some.url, $ cat index.html | md5sum
             hash_expected = service_config['hash']
@@ -441,6 +381,9 @@ for service, service_config in session['services'].items():
             if hash_calculated != hash_expected:
                 services_failed[service] = 'FAILED MD5SUM "{}", received "{}"'.format(service_config['hash'], str(hash_calculated))
 
+    # -----------------------------------------------
+    # Setup notifications
+    # -----------------------------------------------
     # build an array of all recipients and their services
     if session['config']['email']['enabled']:
         # check if secondary recipients need to be added
@@ -462,9 +405,20 @@ for service, service_config in session['services'].items():
 bar.finish()
 
 
-####################################
+#################################################
+# Rules
+#################################################
+print()
+print(pretty_title('Service Rules'))
+print()
+
+#print(responses) 
+for service, rules in rules.items():
+    print(service.ljust(60, '.'), ','.join(rules))
+
+#################################################
 # Responses
-####################################
+#################################################
 print()
 print(pretty_title('Service Response'))
 print()
@@ -473,20 +427,9 @@ print()
 for service, response in responses.items():
     print(service.ljust(60, '.'), response)
     
-####################################
-# Rules
-####################################
-print()
-print(pretty_title('Service Rules'))
-print()
-
-#print(responses) 
-for service, rules in rules.items():
-    print(service.ljust(60, '.'), ','.join(rules))
-    
-####################################
-# SERVICE HISTORY
-####################################
+#################################################
+# Service history
+#################################################
 history_tmp_file = os.path.join(args.logpath, app_name + '.' + session['hash'] + '.history')
 
 try:
@@ -507,6 +450,18 @@ except IOError:
 #     print('read from file')
 #     with open(history_tmp_file) as file:
 #         history_list = yaml.load(file, Loader=yaml.FullLoader)
+
+# -----------------------------------------------
+# Debug
+# -----------------------------------------------
+if debugmode:
+    print()
+    print('Old service history:')
+    print(history_list)
+
+#################################################
+# Failed services
+#################################################
 if len(services_failed.items()):
     print()
     print(pretty_title('Failed Services'))
@@ -514,13 +469,10 @@ if len(services_failed.items()):
 
     for service, reply in services_failed.items():
         print(service.ljust(60, '.'), reply)
-    # print(services_failed)
 
-if debugmode:
-    print()
-    print('Old service history:')
-    print(history_list)
-
+#################################################
+# Succesive failures
+#################################################
 # keep sucessive failures
 for service, service_config in session['services'].items():
     if service in services_failed.keys():
@@ -533,6 +485,11 @@ for service, service_config in session['services'].items():
 
 file = open(history_tmp_file, 'w+')
 history_dumped = yaml.dump(history_list, file)
+
+# -----------------------------------------------
+# Debug
+# -----------------------------------------------
+
 # print('Failed ervices')
 # print(services_failed.keys())
 #
@@ -543,6 +500,9 @@ if debugmode:
     print('New service history:')
     print(history_list)
 
+# -----------------------------------------------
+# Successive failure logiic
+# -----------------------------------------------
 # make a copy of the failed services
 services_failed1 = dict(services_failed)
 
@@ -558,24 +518,33 @@ if len(services_failed1.keys()) > 0:
             del services_failed[service]
             print('*** WARNING *** This failure ({}) did not reach threshold ({}). Removing notification...'.format(history_list[service], successive_failures))
 
+# -----------------------------------------------
+# Debug
+# -----------------------------------------------
 if debugmode:
     print()
     print('All services per mail address...')
     print(configured_services_per_recipient)
 
+# -----------------------------------------------
+# Print messages
+# -----------------------------------------------
 # print messages
 if len(messages):
     print()
     for m in messages:
         print(m)
 
-####################################
-# TMP AND LOG FILES
-####################################
+#################################################
+# Service status
+#################################################
 print()
 print(pretty_title('Service Status'))
 print()
 
+# -----------------------------------------------
+# Write to log
+# -----------------------------------------------
 services_tmp_file_path = os.path.join(tmp_dir, app_name + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
 # print('Write tmp file... {}'.format(services_tmp_file_path))
 services_tmp_file_handle = open(services_tmp_file_path, 'w')
@@ -586,16 +555,25 @@ print('Write log file... {}'.format(services_log_file_path))
 print()
 services_log_file_handle = open(services_log_file_path, 'a')
 
+# -----------------------------------------------
+# Print service status
+# -----------------------------------------------
 for service, service_config in session['services'].items():
     if service in services_failed.keys():
         print(service.ljust(60, '.'), 'FAIL')
     else:
         print(service.ljust(60, '.'), 'PASS')
 
+#################################################
+# Global status
+#################################################
 print()
 print(pretty_title('Global Status'))
 print()
 
+# -----------------------------------------------
+# Write to log
+# -----------------------------------------------
 # iterate through all services
 for service, service_config in session['services'].items():
     if service in services_failed:
@@ -611,9 +589,9 @@ for service, service_config in session['services'].items():
 services_tmp_file_handle.close()
 services_log_file_handle.close()
 
-####################################
-# STATUS LOG FILE
-####################################
+# -----------------------------------------------
+# Print global status
+# -----------------------------------------------
 # print final status
 if len(services_failed) == 0:
     global_status = 'PASS'
@@ -622,9 +600,13 @@ else:
 
 print('Global Status'.ljust(60, '.'), global_status)
 
-####################################
-# STORE STATUSES
-####################################
+#################################################
+# Logic for changed services
+#################################################
+
+# -----------------------------------------------
+# Handle temporary files
+# -----------------------------------------------
 # get a list of all files in tmp dir
 tmp_files_listing = os.listdir(tmp_dir)
 
@@ -645,6 +627,9 @@ while i < len(service_tmp_files):
     os.remove(file_path)
     i += 1
 
+# -----------------------------------------------
+# Detect changed services
+# -----------------------------------------------
 changed_services = {}
 # script is ran for the first time (or after reboot)
 if len(service_tmp_files) == 1:
@@ -677,9 +662,9 @@ else:
 
         i += 1
 
-    ####################################
-    # COMPARE THE STATUSES
-    ####################################
+    # -----------------------------------------------
+    # Compare status
+    # -----------------------------------------------
     for service, new_status in service_status_log['new'].items():
         # do not compare a new service
         if not service in service_status_log['old']:
@@ -689,12 +674,15 @@ else:
             changed_services[service] = new_status
             print('Change in service detected... {}'.format(service))
 
+# -----------------------------------------------
+# Print info
+# -----------------------------------------------
 if len(changed_services) == 0:
     print('No changes since last run...')
 
-####################################
-## DESKTOP ALERT
-####################################
+#################################################
+# Desktop alerts
+#################################################
 notify_desktop = False
 if session['config']['desktop']['enabled']:
     if session['config']['desktop']['trigger'] == 'change':
@@ -708,18 +696,21 @@ if session['config']['desktop']['enabled']:
 if notify_desktop:
     desktop_notify(messages)
 
-####################################
-# COMPILE MAILING LIST
-####################################
+#################################################
+# Compile mailing list
+#################################################
 print()
 print(pretty_title('Notifications'))
 print()
 
+# -----------------------------------------------
+# Set e-mail notification
+# -----------------------------------------------
 notify_email = False
 
-# allow a quiet cli run
+# allow a quiet cli run - sending no emails 
 if args.quiet:
-    print('Quiet mode is set...')
+    print('Quiet mode is set. E-mails disabled...')
 else:
     if session['config']['email']['enabled']:
         if len(changed_services) != 0:
@@ -728,6 +719,9 @@ else:
             else:
                 notify_email = True
 
+# -----------------------------------------------
+# Debug
+# -----------------------------------------------
 if debugmode:
     if len(changed_services) != 0:
         print(pretty_title('Changed Services', 'h3'))
@@ -735,6 +729,9 @@ if debugmode:
         print(changed_services)
         print()
 
+#################################################
+# Send e-mails
+#################################################
 # send messages
 if notify_email:
     if debugmode:
@@ -768,9 +765,9 @@ if notify_email:
     mail_log_file_handle = open(mail_log_file_path, 'a')
     print()
 
-    ####################################
-    # PREPARE MAILS
-    ####################################
+    # -----------------------------------------------
+    # Prepare messages
+    # -----------------------------------------------
     mails = {}
     for recipient in changed_service_recipients:
         # setup mail variables
@@ -814,9 +811,9 @@ if notify_email:
         mails[recipient]['subject'] = subject
         mails[recipient]['body'] = body
 
-    ####################################
-    # SEND MAILS
-    ####################################
+    # -----------------------------------------------
+    # Send e-mails
+    # -----------------------------------------------
     # iterate all mails
     fqdn = socket.getfqdn()
 
@@ -869,15 +866,13 @@ if notify_email:
 else:
     print('Not sending notifications...')
 
-####################################
-# REMOVE LOCK FILE
-####################################
+#################################################
+# Clean up
+#################################################
 # remove the lock file
 App.remove_lock()
 
-####################################
-# WRAP UP
-####################################
+# time script
 sec = int(round(time.time()-start_time))
 script_time = datetime.timedelta(seconds =sec)
 print()
