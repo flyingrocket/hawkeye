@@ -196,7 +196,18 @@ for type, file_path in cli_params.items():
     session[type] = cli_config_tmp
 
 # -----------------------------------------------
-# Check if dir exist
+# Get global defaults
+# -----------------------------------------------
+session_defaults = {}
+file_path = './config/default.config.yaml'
+with open(file_path) as file:
+    try:
+        session_defaults = yaml.load(file, Loader=yaml.SafeLoader)
+    except:
+        App.fail('Exception in parsing default condig yaml file ' + file_path + '!')
+
+# -----------------------------------------------
+# Check if dirs exist
 # -----------------------------------------------
 # check if dirs exist!
 for type in ['log', 'tmp']:
@@ -269,12 +280,6 @@ print()
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
-default_request_params = {}
-default_request_params['redirect'] = True
-default_request_params['timeout'] = 15
-default_request_params['retries'] = 3
-default_request_params['status'] = 200
-
 messages=[]
 responses = {}
 rules = {}
@@ -338,7 +343,7 @@ for service, service_config in session['services'].items():
         if directive in session['config']['request'].keys():
             request_params[directive] = session['config']['request'][directive]
         else:
-            request_params[directive] = default_request_params[directive]
+            request_params[directive] = session_defaults['request'][directive]
 
         # override per service
         if directive in service_config:
