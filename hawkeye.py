@@ -542,7 +542,7 @@ for service, response in responses.items():
 # TMP AND LOG FILES
 ####################################
 print()
-print(pretty_title('Log'))
+print(pretty_title('Service Status'))
 print()
 
 services_tmp_file_path = os.path.join(tmp_dir, app_name + '.' + session['hash'] + '.' + datetime_stamp + '.' + session['id'] + '.services.tmp')
@@ -562,7 +562,7 @@ for service, service_config in session['services'].items():
         print(service.ljust(60, '.'), 'PASS')
 
 print()
-print(pretty_title('Status'))
+print(pretty_title('Global Status'))
 print()
 
 # iterate through all services
