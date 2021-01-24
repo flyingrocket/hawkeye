@@ -514,8 +514,12 @@ services_failed1 = dict(services_failed)
 if len(services_failed1.keys()) > 0:
     print()
     print('Successive faiures:')
-    #print()
-    successive_failures = session['config']['notify_when']['successive_failures']
+    
+    # TODO create a function to look up defaults
+    if 'successive_failures' in session['config']['notify_when'].keys():
+        successive_failures = session['config']['notify_when']['successive_failures']
+    else:
+        successive_failures = session_defaults['notify_when']['successive_failures']
 
     for service in services_failed1.keys():
         print(service.ljust(60, '.'), history_list[service])
