@@ -345,9 +345,10 @@ for service, service_config in session['services'].items():
         else:
             request_params[directive] = session_defaults['request'][directive]
 
-        # override per service
-        if directive in service_config:
-            request_params[directive] = service_config[directive]
+        if service_config:
+          # override per service
+          if directive in service_config:
+              request_params[directive] = service_config[directive]
                 
     rules[service].append('status=' + str(request_params['status']))
     rules[service].append('redirect=' + str(request_params['redirect']))
@@ -376,7 +377,7 @@ for service, service_config in session['services'].items():
         if r.status != request_params['status']:
             services_failed[service] = 'FAILED RESPONSE {} "{}", received {} "{}"'.format(str(request_params['status']), response_codes[int(request_params['status'])][0], str(r.status), response_codes[int(r.status)][0])
         # extra check: check if hash matches expected hash
-        elif 'hash' in service_config:
+        elif service_config and 'hash' in service_config:
             # $ wget https://some.url, $ cat index.html | md5sum
             hash_expected = service_config['hash']
             text = r.data.decode("utf-8")
