@@ -36,6 +36,7 @@ notify_when:
   successive_failures: 1 # 1 will trigger a notification on the first time a faiilure occurs
 # some values while doing the request. install package: python3-urllib3
 request:
+  protocol: 'https'
   timeout: 15
   retries: 3
   redirect: true

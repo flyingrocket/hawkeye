@@ -280,6 +280,50 @@ print()
 # create the progress bar
 bar = Bar('Scanning...', max=number_of_services)
 
+# -----------------------------------------------
+# Compile urls
+# -----------------------------------------------
+# create temporary services dict 
+services_tmp = {}
+
+# allow for www.google.com with a specified protocol
+for service, service_config in session['services'].items():
+
+    ## TODO: this check is redundant with same check in service loop later
+    directive = 'protocol'
+    # set global directive as default
+    if directive in session['config']['request'].keys():
+        protocol = session['config']['request'][directive]
+    else:
+        protocol = session_defaults['request'][directive]
+
+    if service_config:
+        # override per service
+        if directive in service_config:
+            protocol = service_config[directive]
+
+    url_stripped = re.sub(r'https?://', '', service )
+
+    # no protocol in URL (no http(s)://)
+    if service == url_stripped:
+        if protocol == 'http':
+            service_url = 'http://' + url_stripped
+        elif protocol == 'https':
+            service_url = 'https://' + url_stripped
+        else:
+            App.fail('Invalid protocol for service {}!'.format(service))
+    # protocol in URL
+    else:        
+        service_url = service
+
+    services_tmp[service_url] = session['services'][service]
+    # a_dict[new_key] = a_dict.pop(old_key)
+
+session['services'] = services_tmp
+
+# -----------------------------------------------
+# Loop through services
+# -----------------------------------------------
 messages=[]
 responses = {}
 rules = {}
@@ -287,9 +331,6 @@ request_params = {}
 
 connectivity_checked = False
 
-# -----------------------------------------------
-# Loop through services
-# -----------------------------------------------
 # request the urls
 for service, service_config in session['services'].items():
     
@@ -301,19 +342,6 @@ for service, service_config in session['services'].items():
 
     # get a list of all http response codes
     response_codes = requests.status_codes._codes
-
-    # -----------------------------------------------
-    # Check for network
-    # -----------------------------------------------
-    # check connectivity
-    if not connectivity_checked:
-        connectivity_checked = True
-        domain = service.split('//')[-1].split('/')[0].split('?')[0]
-        try:
-            # print('Connectivity check. Try {}... '.format(domain))
-            resolved = socket.gethostbyname(domain)
-        except OSError as e:
-            App.fail('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
 
     # -----------------------------------------------
     # Match tags
@@ -333,13 +361,12 @@ for service, service_config in session['services'].items():
         if random.randint(0, 1) == 1:
             request_params['status'] = random.choice(list(response_codes.keys()))
 
-
     # -----------------------------------------------
     # Override global directives
     # -----------------------------------------------
-    for directive in ['redirect', 'timeout', 'retries', 'status']:
+    for directive in ['redirect', 'timeout', 'retries', 'status', 'protocol']:
 
-        # set global directove as default
+        # set global directive as default
         if directive in session['config']['request'].keys():
             request_params[directive] = session['config']['request'][directive]
         else:
@@ -349,9 +376,41 @@ for service, service_config in session['services'].items():
           # override per service
           if directive in service_config:
               request_params[directive] = service_config[directive]
-                
-    rules[service].append('status=' + str(request_params['status']))
-    rules[service].append('redirect=' + str(request_params['redirect']))
+       
+    for directive in ['redirect', 'status']:        
+        rules[service].append(directive + '=' + str(request_params[directive]))
+
+    # -----------------------------------------------
+    # Check for network
+    # -----------------------------------------------
+    # check connectivity
+    if not connectivity_checked:
+        domain = service.split('//')[-1].split('/')[0].split('?')[0]
+        try:
+            # print('Connectivity check. Try {}... '.format(domain))
+            resolved = socket.gethostbyname('8.8.8.8')
+        except OSError as e:
+            App.fail('Network connection failed! Cannot resolve {}. Error: "{}"...'.format(domain, e.args[1]))
+        
+        connectivity_checked = True
+
+    # -----------------------------------------------
+    # Validate url
+    # -----------------------------------------------
+
+    # regex to validate url
+    regex = re.compile(
+        r'^(?:http|ftp)s?://' # http:// or https://
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' #domain...
+        r'localhost|' #localhost...
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' # ...or ip
+        r'(?::\d+)?' # optional port
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
+    # validate url
+    url_is_valid = re.match(regex, service)
+    if not url_is_valid:
+        App.fail('URL {} is not valid!'.format(service))
 
     # -----------------------------------------------
     # Make the request
