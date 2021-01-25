@@ -531,7 +531,7 @@ if len(services_failed.items()):
     print()
     print(pretty_title('Failed Services'))
     print()
-
+    
     for service, reply in services_failed.items():
         print(service.ljust(60, '.'), reply)
 
@@ -668,6 +668,17 @@ else:
     global_status = 'FAIL'
 
 print('Global Status'.ljust(60, '.'), global_status)
+
+# percentage failed
+services_total = number_of_services
+services_failed = len(services_failed.items())
+services_success = services_total - services_failed
+
+success_rate = round(100 * float(services_success)/float(services_total), 2)
+
+print('Services passed: '.ljust(60, '.'), '{}/{} ({}%)'.format(services_success, services_total, success_rate) )
+# print('Success Rate: '.ljust(60, '.'), '{}%'.format(success_rate) )
+print()
 
 #################################################
 # Logic for changed services
