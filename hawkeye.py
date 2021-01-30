@@ -178,12 +178,14 @@ for type, file_path in cli_params.items():
         if re.search('.+\.json$', file_path):
             try:
                 session[type] = json.load(file)
-            except:
+            except json.decoder.JSONDecodeError as e:
+                print(e)
                 App.fail('Exception in parsing json file ' + file_path + '!')
         elif re.search('.+\.ya?ml$', file_path):
             try:
                 session[type] = yaml.load(file, Loader=yaml.SafeLoader)
-            except:
+            except yaml.YAMLError as e:
+                print(e)
                 App.fail('Exception in parsing yaml file ' + file_path + '!')
         else:
             App.fail('{} file not supported!'.format(type))
@@ -203,7 +205,8 @@ file_path = './config/default.config.yaml'
 with open(file_path) as file:
     try:
         session_defaults = yaml.load(file, Loader=yaml.SafeLoader)
-    except:
+    except yaml.YAMLError as e:
+        print(e)
         App.fail('Exception in parsing default condig yaml file ' + file_path + '!')
 
 # -----------------------------------------------
